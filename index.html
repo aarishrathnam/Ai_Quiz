@@ -1,0 +1,2094 @@
+<!DOCTYPE html>
+<html lang="en" class="light"> <!-- Default to light mode -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Self-Analysis Quiz</title>
+    <!-- Configure Tailwind for Dark Mode -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Enable dark mode via class
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0f172a', /* Deeper blue-gray for modern dark mode */
+                        darkCard: '#1e293b',
+                        darkText: '#f8fafc'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans Tamil', 'sans-serif'],
+                    },
+                    animation: {
+                        'gradient-x': 'gradient-x 15s ease infinite',
+                        'blob': 'blob 7s infinite',
+                        'modal-pop': 'modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    },
+                    keyframes: {
+                        'gradient-x': {
+                            '0%, 100%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'left center'
+                            },
+                            '50%': {
+                                'background-size': '200% 200%',
+                                'background-position': 'right center'
+                            },
+                        },
+                        'blob': {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        'modalPop': {
+                            '0%': { opacity: '0', transform: 'scale(0.95) translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Use Inter font and Noto Sans Tamil for Tamil support -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- MathJax for rendering LaTeX symbols -->
+    <script>
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']],
+          processEscapes: true
+        }
+      };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+    </script>
+
+    <!-- Lottie for Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+
+    <!-- jsPDF and html2canvas for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- PDF.js for PDF processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // Set worker path for PDF.js
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans Tamil', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        /* Modern Gradient Background */
+        .main-bg {
+            background: linear-gradient(to bottom right, #eff6ff, #f5f3ff, #fff7ed);
+            min-height: 100vh;
+        }
+        .dark .main-bg {
+            background: linear-gradient(to bottom right, #0f172a, #1e1b4b, #171717);
+        }
+
+        /* Glassmorphism Card Style */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .file-input-label {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.3);
+        }
+        
+        .option-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .option-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .option-btn:disabled {
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Specific Correct/Incorrect colors */
+        .correct {
+            background-color: #dcfce7 !important;
+            border-color: #22c55e !important;
+            color: #15803d !important;
+            position: relative;
+        }
+        .incorrect {
+            background-color: #fee2e2 !important;
+            border-color: #ef4444 !important;
+            color: #b91c1c !important;
+        }
+        /* Dark mode overrides */
+        .dark .correct {
+            background-color: #052e16 !important;
+            border-color: #22c55e !important;
+            color: #4ade80 !important;
+        }
+        .dark .incorrect {
+            background-color: #450a0a !important;
+            border-color: #ef4444 !important;
+            color: #fca5a5 !important;
+        }
+        /* Dark mode for options buttons */
+        .dark .option-btn {
+            background-color: #1e293b;
+            color: #f1f5f9;
+            border-color: #334155;
+        }
+        .dark .option-btn:hover:not(:disabled) {
+            background-color: #334155;
+            border-color: #818cf8;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Modal styles */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 40;
+            animation: fadeOverlay 0.3s ease-out forwards;
+        }
+        .modal {
+            z-index: 50;
+        }
+
+        /* Specific animation for modals appearing */
+        .modal-content-anim {
+            animation: modalPop 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Explicit Keyframes for Modal Animation */
+        @keyframes modalPop {
+            0% { opacity: 0; transform: scale(0.9) translateY(20px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        /* Explicit Keyframes for Backdrop Fade */
+        @keyframes fadeOverlay {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        #summary-container {
+            overflow-y: visible;
+            max-height: none;
+        }
+        @media screen {
+            #summary-container {
+                max-height: 24rem;
+                overflow-y: auto;
+            }
+        }
+
+        .mini-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e5e7eb;
+            border-top: 2px solid #6366f1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 1rem auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .question-content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            padding: 0.75rem;
+            background-color: #f8fafc;
+            border-radius: 0.5rem;
+            border: 1px solid #e2e8f0;
+        }
+        .dark .question-content pre {
+            background-color: #0f172a;
+            border-color: #1e293b;
+            color: #e2e8f0;
+        }
+
+        /* BUG FIX: Ensure sections are hidden by default */
+        #student-info-section, #mode-selection-section, #upload-section, #pyq-selection-section, #quiz-section, #result-section {
+            display: none; 
+        }
+
+        .difficulty-label {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
+        }
+        .difficulty-easy { background-color: #d1fae5; color: #047857; }
+        .difficulty-medium { background-color: #fef9c3; color: #a16207; }
+        .difficulty-hard { background-color: #fee2e2; color: #b91c1c; }
+        .dark .difficulty-easy { background-color: #064e3b; color: #34d399; }
+        .dark .difficulty-medium { background-color: #422006; color: #fcd34d; }
+        .dark .difficulty-hard { background-color: #450a0a; color: #f87171; }
+
+        .max-questions-input {
+            width: 80px;
+            padding: 4px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        /* Custom Scrollbar for better look */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 163, 175, 0.5); 
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body class="main-bg text-gray-800 dark:text-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <!-- Decorative Background Elements -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div class="absolute top-0 left-1/4 w-96 h-96 bg-purple-300 dark:bg-purple-900 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+        <div class="absolute top-0 right-1/4 w-96 h-96 bg-blue-300 dark:bg-blue-900 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+        <div class="absolute -bottom-8 left-1/3 w-96 h-96 bg-pink-300 dark:bg-pink-900 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div id="api-key-modal" class="hidden fixed inset-0 flex items-center justify-center modal-backdrop" style="z-index: 70;">
+        <div class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-md m-4 modal-content-anim border border-white/50">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Enter Your API Key</h2>
+            <p class="text-gray-600 dark:text-gray-300 mb-6">To generate questions, please provide your Gemini API key. It will only be stored for this session.</p>
+            <input type="password" id="api-key-input" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="Paste your API key here">
+            
+            <div class="flex flex-col gap-3 mt-6">
+                <button id="save-api-key-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-indigo-500/30 hover:bg-indigo-700 transition duration-300 transform hover:-translate-y-0.5">
+                    Save and Continue
+                </button>
+                <button id="how-to-api-btn" class="w-full bg-gray-100 dark:bg-gray-700/50 text-indigo-600 dark:text-indigo-300 font-semibold py-3 px-6 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition duration-300 text-sm border border-gray-200 dark:border-gray-600">
+                    How to generate an API key?
+                </button>
+                <button id="change-api-key-btn" class="hidden w-full bg-red-50 text-red-600 font-semibold py-2 px-6 rounded-xl hover:bg-red-100 transition duration-300 text-sm border border-red-200">
+                    Change API Key
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- How to Generate API Key Modal -->
+    <div id="how-to-api-modal" class="hidden fixed inset-0 flex items-center justify-center modal-backdrop" style="z-index: 80;">
+        <div class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-lg m-4 modal-content-anim relative">
+            <button id="close-how-to-btn" class="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white font-bold text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">&times;</button>
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">How to Get Your Gemini API Key</h2>
+            
+            <div class="space-y-6 text-left text-gray-600 dark:text-gray-300 mb-6 h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                <!-- Step 1 -->
+                <div class="flex gap-4">
+                    <span class="flex-shrink-0 w-8 h-8 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-lg border border-indigo-200 dark:border-indigo-700">1</span>
+                    <div class="w-full">
+                        <p class="mb-2">Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-600 dark:text-indigo-400 underline font-medium hover:text-indigo-700">Google AI Studio</a> and sign in.</p>
+                        <div class="border rounded-lg p-2 bg-gray-50 dark:bg-gray-700/50">
+                             <img src="1st Step.png" alt="Step 1: Sign In" class="w-full h-auto rounded shadow-sm" onerror="this.src='https://placehold.co/600x400?text=Step+1'">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="flex gap-4">
+                    <span class="flex-shrink-0 w-8 h-8 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-lg border border-indigo-200 dark:border-indigo-700">2</span>
+                    <div class="w-full">
+                         <p class="mb-2">Click the blue button <strong>"Create API key"</strong>.</p>
+                         <div class="border rounded-lg p-2 bg-gray-50 dark:bg-gray-700/50">
+                             <img src="2nd step.png" alt="Step 2: Click Create" class="w-full h-auto rounded shadow-sm" onerror="this.src='https://placehold.co/600x400?text=Step+2'">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="flex gap-4">
+                    <span class="flex-shrink-0 w-8 h-8 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-lg border border-indigo-200 dark:border-indigo-700">3</span>
+                    <div class="w-full">
+                        <p class="mb-2">Select <strong>"Create API key in new project"</strong>.</p>
+                        <div class="border rounded-lg p-2 bg-gray-50 dark:bg-gray-700/50">
+                             <img src="3rd step.png" alt="Step 3: Select Project" class="w-full h-auto rounded shadow-sm" onerror="this.src='https://placehold.co/600x400?text=Step+3'">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="flex gap-4">
+                    <span class="flex-shrink-0 w-8 h-8 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-lg border border-indigo-200 dark:border-indigo-700">4</span>
+                    <div class="w-full">
+                        <p class="mb-2">Copy the generated key (starts with "AIza...").</p>
+                         <div class="border rounded-lg p-2 bg-gray-50 dark:bg-gray-700/50">
+                             <img src="4th Step.png" alt="Step 4: Copy Key" class="w-full h-auto rounded shadow-sm" onerror="this.src='https://placehold.co/600x400?text=Step+4'">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5 -->
+                <div class="flex gap-4">
+                    <span class="flex-shrink-0 w-8 h-8 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center font-bold text-lg border border-indigo-200 dark:border-indigo-700">5</span>
+                    <div>
+                        <p>Paste it here and click <strong>Save and Continue</strong>.</p>
+                    </div>
+                </div>
+            </div>
+
+            <button id="close-how-to-modal-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300">
+                Got it, thanks!
+            </button>
+        </div>
+    </div>
+
+
+    <div id="app-container" class="w-full max-w-3xl mx-auto">
+        <!-- Persistent Header -->
+        <header id="app-header" class="flex justify-between items-center gap-4 mb-8 flex-wrap glass-card p-4 rounded-2xl shadow-sm z-30 relative">
+             <div class="flex items-center gap-4">
+                <!-- Back Button -->
+                <button id="header-back-btn" class="hidden p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors" title="Back to Menu">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                </button>
+
+                <img src="logo.png" alt="College Logo" class="w-14 h-14 object-cover rounded-full shadow-md ring-2 ring-indigo-100 dark:ring-indigo-900" onerror="this.src='https://placehold.co/100x100?text=Logo'">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800 dark:text-white tracking-tight">AI Self-Analysis Tool</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">S.B. College Of Pharmacy</p>
+                </div>
+            </div>
+            <!-- Header Buttons -->
+            <div class="flex gap-2 flex-wrap justify-end items-center">
+                 <!-- Dark Mode Toggle -->
+                 <button id="dark-mode-toggle" class="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-600 dark:text-gray-300" title="Toggle Dark Mode">
+                    <svg id="sun-icon" class="w-5 h-5 text-amber-400 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <svg id="moon-icon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+                 
+                 <!-- Pharma Updates Button -->
+                 <button id="pharma-updates-btn" class="bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200/50 dark:hover:bg-emerald-800/40 font-semibold py-2 px-3 rounded-lg transition duration-300 text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.894-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.03-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                    </svg>
+                    Updates
+                </button>
+
+                 <!-- CHANGED: Download App Button (Triggers Modal) -->
+                 <button id="download-app-btn" class="group relative bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-2 px-4 rounded-xl shadow-lg hover:shadow-indigo-500/30 transition-all duration-300 text-sm flex items-center gap-2 overflow-hidden ring-1 ring-white/20">
+                    <!-- Shine Effect -->
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out skew-x-12"></div>
+                    
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <div class="flex flex-col items-start leading-none">
+                        <span class="text-xs font-bold tracking-wide uppercase">Get App</span>
+                        <span class="text-[10px] font-mono opacity-90 text-indigo-100">v1.0</span>
+                    </div>
+                </button>
+
+                 <!-- Syllabus Button -->
+                <button id="syllabus-btn" class="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-800/40 font-semibold py-2 px-3 rounded-lg transition duration-300 text-xs border border-indigo-200 dark:border-indigo-800">
+                    Syllabus
+                </button>
+                <!-- PYQ Button -->
+                <button id="pyq-btn" class="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-800/40 font-semibold py-2 px-3 rounded-lg transition duration-300 text-xs border border-indigo-200 dark:border-indigo-800">
+                    PYQ
+                </button>
+                <!-- Notes Button -->
+                <button id="notes-btn" class="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-800/40 font-semibold py-2 px-3 rounded-lg transition duration-300 text-xs border border-indigo-200 dark:border-indigo-800">
+                    Notes
+                </button>
+                <!-- Contribution Button -->
+                <button id="open-contribution-btn" class="bg-gradient-to-br from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 font-semibold py-2 px-4 rounded-lg transition duration-300 text-xs shadow-md">
+                    Donate
+                </button>
+                <!-- Contact Us Button (NEW) -->
+                <button id="open-contact-btn" class="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-800/40 font-semibold py-2 px-3 rounded-lg transition duration-300 text-xs border border-indigo-200 dark:border-indigo-800">
+                    Contact Us
+                </button>
+            </div>
+        </header>
+
+        <!-- NEW: Contact Us Modal -->
+        <div id="contact-modal" class="hidden fixed inset-0 flex items-center justify-center modal-backdrop" style="z-index: 95;">
+            <div class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-md m-4 modal-content-anim relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <button id="close-contact-btn" class="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white font-bold text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">&times;</button>
+                
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">Contact Us</h2>
+                <p class="text-gray-600 dark:text-gray-300 mb-6 text-sm">Have a question or found a bug? Let us know!</p>
+                
+                <form action="https://formspree.io/f/xwpgybjn" method="POST" class="space-y-4 mb-6">
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Your Email</label>
+                        <input type="email" name="email" id="contact-email" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="you@example.com">
+                    </div>
+                    
+                    <div>
+                        <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Message / Bug Report</label>
+                        <textarea name="message" id="contact-message" rows="3" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="Describe the issue..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-indigo-500/30 hover:bg-indigo-700 transition duration-300 transform hover:-translate-y-0.5">
+                        Send Message
+                    </button>
+                </form>
+
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
+                    <span class="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase">Or Report via WhatsApp</span>
+                    <div class="flex-grow border-t border-gray-300 dark:border-gray-600"></div>
+                </div>
+
+                <div class="mt-4 flex flex-col items-center space-y-4 bg-green-50 dark:bg-green-900/10 p-4 rounded-2xl border border-green-100 dark:border-green-800/30">
+                     <img src="Whatsappqr.jpeg" alt="WhatsApp QR Code" class="w-32 h-32 object-contain rounded-lg shadow-sm mix-blend-multiply dark:mix-blend-normal bg-white" onerror="this.src='https://placehold.co/150x150?text=QR+Code'">
+                     
+                     <a href="https://wa.me/qr/EQHDISXD2P5ZO1" target="_blank" class="flex items-center gap-2 bg-[#25D366] text-white font-bold py-2.5 px-6 rounded-xl hover:bg-[#20bd5a] transition shadow-md w-full justify-center transform hover:-translate-y-0.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                        Chat on WhatsApp
+                     </a>
+                     
+                     <p class="text-xs text-gray-500 dark:text-gray-400 font-medium text-center">
+                        Report the Issue with the Screenshot
+                     </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Syllabus Modal -->
+        <div id="syllabus-modal" class="hidden fixed inset-0 flex items-center justify-center modal-backdrop" style="z-index: 60;">
+            <div class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-md m-4 modal-content-anim text-center relative">
+                 <button id="close-syllabus-btn" class="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white font-bold text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">&times;</button>
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">Download Syllabus</h2>
+                <div class="grid grid-cols-1 gap-3">
+                    <a href="https://drive.google.com/file/d/16zR9bU-t4UvMo4_Gh2i0ajRUyNSkHmxJ/view?usp=drive_link" target="_blank" class="block w-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-semibold py-3 px-4 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-800/40 transition text-left flex justify-between items-center border border-blue-100 dark:border-blue-800">
+                        <span>GPAT Syllabus</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    </a>
+                    <a href="https://drive.google.com/file/d/13VHJA6DZGy4iXVe4ZfDPv481mtJvpEC0/view?usp=sharing" target="_blank" class="block w-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 font-semibold py-3 px-4 rounded-xl hover:bg-green-100 dark:hover:bg-green-800/40 transition text-left flex justify-between items-center border border-green-100 dark:border-green-800">
+                        <span>MRP Papers</span>
+                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    </a>
+                    <a href="https://drive.google.com/file/d/1Ub0W30sNWrxa58R-3u2UBsKRaOm_czvb/view?usp=sharing" target="_blank" class="block w-full bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 font-semibold py-3 px-4 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-800/40 transition text-left flex justify-between items-center border border-purple-100 dark:border-purple-800">
+                        <span>Drug Inspector Papers</span>
+                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    </a>
+                    <a href="https://drive.google.com/file/d/168y7zwwFnDqVftSgp0Pixgz2RjJvYvvB/view?usp=sharing" target="_blank" class="block w-full bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 font-semibold py-3 px-4 rounded-xl hover:bg-orange-100 dark:hover:bg-orange-800/40 transition text-left flex justify-between items-center border border-orange-100 dark:border-orange-800">
+                        <span>RRB Papers</span>
+                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW: Download App Modal -->
+        <div id="download-app-modal" class="hidden fixed inset-0 flex items-center justify-center modal-backdrop" style="z-index: 95;">
+            <div class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-sm m-4 modal-content-anim text-center relative border border-white/50 dark:border-gray-700">
+                <button id="close-download-app-btn" class="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white font-bold text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">&times;</button>
+                
+                <div class="mb-6 relative mx-auto w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center shadow-lg shadow-blue-500/30 ring-4 ring-white dark:ring-gray-700 transform hover:scale-105 transition duration-300">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-1">AI Analysis App</h2>
+                <div class="flex items-center justify-center gap-2 mb-6">
+                    <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs px-2.5 py-1 rounded-md font-bold tracking-wide">v1.0</span>
+                    <span class="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs px-2.5 py-1 rounded-md font-bold flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.3414C17.523 15.3414 17.4795 15.3414 17.436 15.3414C17.3924 15.3414 17.3489 15.3414 17.3053 15.3414C17.2618 15.3414 17.2182 15.3414 17.1747 15.3414C17.1311 15.3414 17.0876 15.3414 17.044 15.3414C15.3453 15.3414 13.9079 16.5173 13.5595 18.0851H10.4405C10.0921 16.5173 8.65469 15.3414 6.95599 15.3414C6.91244 15.3414 6.86889 15.3414 6.82533 15.3414C6.78178 15.3414 6.73822 15.3414 6.69467 15.3414C6.65111 15.3414 6.60756 15.3414 6.564 15.3414C6.52045 15.3414 6.47689 15.3414 6.43334 15.3414C4.16911 15.3414 2.33334 17.1772 2.33334 19.4414V21.3334H21.6667V19.4414C21.6667 17.1772 19.8309 15.3414 17.5667 15.3414C17.5231 15.3414 17.4796 15.3414 17.436 15.3414L17.523 15.3414ZM16.6667 12.6667H19.3333V4.66671L16.6667 5.33337V12.6667ZM7.33334 12.6667V5.33337L4.66667 4.66671V12.6667H7.33334ZM12 2C13.4333 2 14.7833 2.4 15.9333 3.08337L15.2667 5.08337C14.35 4.6 13.2333 4.33337 12 4.33337C10.7667 4.33337 9.65001 4.6 8.73334 5.08337L8.06667 3.08337C9.21667 2.4 10.5667 2 12 2Z"/></svg>
+                        Android
+                    </span>
+                </div>
+                
+                <div class="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-5 mb-6 border border-gray-100 dark:border-gray-600 text-left">
+                     <div class="flex items-center gap-3 mb-3">
+                        <span class="relative flex h-3 w-3">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                        </span>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Status: <span class="text-green-600 dark:text-green-400 font-bold">Ready to Download</span></span>
+                     </div>
+                     <ul class="text-xs text-gray-500 dark:text-gray-400 space-y-1.5 ml-1">
+                        <li class="flex items-center gap-2"><svg class="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Size: ~5MB</li>
+                        <li class="flex items-center gap-2"><svg class="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Requires: Android 8.0+</li>
+                        <li class="flex items-center gap-2"><svg class="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> 100% Safe & Secure</li>
+                     </ul>
+                </div>
+
+                <a href="https://drive.google.com/file/d/1DFA4mQPX9X0hl-xiFcu-GSNCtAyxVxSm/view?usp=sharing" target="_blank" class="block w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg hover:shadow-indigo-500/30 hover:from-blue-500 hover:to-indigo-500 transition duration-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download Now
+                </a>
+                <p class="text-[10px] text-gray-400 mt-4">By downloading, you agree to our Terms of Service.</p>
+            </div>
+        </div>
+
+        <!-- NEW: Pharma Updates Modal -->
+        <div id="pharma-updates-modal" class="hidden fixed inset-0 flex items-center justify-center modal-backdrop" style="z-index: 90;">
+            <div class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-md m-4 modal-content-anim text-center relative border-t-4 border-emerald-500">
+                 <button id="close-pharma-updates-btn" class="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white font-bold text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">&times;</button>
+                
+                <div class="mb-6 flex justify-center">
+                    <div class="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/50 rounded-full flex items-center justify-center shadow-inner ring-4 ring-emerald-50 dark:ring-emerald-900/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.894-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.03-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">Latest Pharma Updates</h2>
+                <p class="text-gray-600 dark:text-gray-300 text-sm mb-4">
+                    Get all the latest exam updates (GPAT, MMC, etc.), application procedures, PCI news, and more!
+                </p>
+                
+                <div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-xl mb-4 text-sm border border-gray-200 dark:border-gray-600">
+                    <span class="text-gray-500 dark:text-gray-400">Maintained By:</span><br>
+                    <strong class="text-indigo-600 dark:text-indigo-400">S.V.S Harish M.Pharm</strong>
+                </div>
+
+                <!-- Privacy Notice -->
+                <div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-left flex items-start gap-3 border border-blue-100 dark:border-blue-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <div>
+                         <p class="text-sm text-blue-900 dark:text-blue-100 font-bold mb-1">Privacy Safe</p>
+                         <p class="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
+                            This is a <strong>WhatsApp Channel</strong>. Your personal details (like phone number) are <strong>hidden</strong> from everyone except your own saved contacts. Join without hesitation!
+                        </p>
+                    </div>
+                </div>
+
+                <a href="https://whatsapp.com/channel/0029Vb5vBbSHVvTS7gfwUG1r" target="_blank" class="block w-full bg-emerald-600 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg hover:bg-emerald-700 transition duration-300 flex items-center justify-center gap-2 transform hover:-translate-y-0.5">
+                    <span>Join Channel</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- PYQ Modal -->
+        <div id="pyq-modal" class="hidden fixed inset-0 flex items-center justify-center modal-backdrop" style="z-index: 60;">
+            <div class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-md m-4 modal-content-anim text-center relative max-h-[90vh] overflow-y-auto">
+                 <button id="close-pyq-btn" class="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white font-bold text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">&times;</button>
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">Previous Year Questions</h2>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" for="pyq-year">Select Year (Optional Filter)</label>
+                    <select id="pyq-year" class="shadow-sm border border-gray-300 dark:border-gray-600 rounded-lg w-full py-2 px-3 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option>All Years</option>
+                        <option>2024</option>
+                        <option>2023</option>
+                        <option>2022</option>
+                        <option>2021</option>
+                    </select>
+                </div>
+
+                <div id="pyq-links-container" class="grid grid-cols-1 gap-3">
+                     <a href="https://drive.google.com/drive/folders/1kuiysK1KFNcpSRD-oO4wFJizfdpeOCKm?usp=sharing" target="_blank" class="block w-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-semibold py-3 px-4 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-800/40 transition text-left flex justify-between items-center border border-blue-100 dark:border-blue-800">
+                        <span>GPAT Papers</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    </a>
+                    <a href="https://drive.google.com/drive/folders/1g2cV445Wo1jGE4WKgCzBsQzSBnWRZvkD?usp=sharing" target="_blank" class="block w-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 font-semibold py-3 px-4 rounded-xl hover:bg-green-100 dark:hover:bg-green-800/40 transition text-left flex justify-between items-center border border-green-100 dark:border-green-800">
+                        <span>MRP Papers</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    </a>
+                     <a href="https://drive.google.com/drive/folders/1oP5J_bemiVge-hWJGxGlRwK_bJNopKMV?usp=sharing" target="_blank" class="block w-full bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 font-semibold py-3 px-4 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-800/40 transition text-left flex justify-between items-center border border-purple-100 dark:border-purple-800">
+                        <span>Drug Inspector Papers</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    </a>
+                     <a href="https://drive.google.com/drive/folders/1wEjVtU8RHlpBtjRpoqBgt853VIrJXAHt?usp=sharing" target="_blank" class="block w-full bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 font-semibold py-3 px-4 rounded-xl hover:bg-orange-100 dark:hover:bg-orange-800/40 transition text-left flex justify-between items-center border border-orange-100 dark:border-orange-800">
+                        <span>RRB Papers</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                    </a>
+                </div>
+                
+                <button id="show-add-link-form-btn" class="mt-4 w-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition duration-300 text-sm border border-gray-300 dark:border-gray-600">
+                    + Add New Question Link
+                </button>
+                
+                <div id="add-link-form" class="hidden mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <input type="text" id="new-link-title" class="w-full mb-2 px-3 py-2 border rounded text-sm dark:bg-gray-600 dark:text-white dark:border-gray-500" placeholder="Title (e.g., GPAT 2025)">
+                    <input type="url" id="new-link-url" class="w-full mb-2 px-3 py-2 border rounded text-sm dark:bg-gray-600 dark:text-white dark:border-gray-500" placeholder="Drive Link URL">
+                    <div class="flex gap-2">
+                        <button id="cancel-add-link-btn" class="flex-1 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-white py-2 rounded text-sm hover:bg-gray-400 dark:hover:bg-gray-500">Cancel</button>
+                        <button id="save-new-link-btn" class="flex-1 bg-indigo-600 text-white py-2 rounded text-sm hover:bg-indigo-700">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contribution Modal -->
+        <div id="contribution-modal" class="hidden fixed inset-0 flex items-center justify-center modal-backdrop">
+            <div class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-md m-4 modal-content-anim text-center relative">
+                 <button id="close-contribution-btn" class="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white font-bold text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">&times;</button>
+                <h2 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-4">Support the Creator</h2>
+                <p class="text-gray-800 dark:text-white font-semibold mb-2">Created & Provided By:</p>
+                <p class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Aarish Rathnam S, B.Pharm</p>
+                <p class="text-gray-600 dark:text-gray-300 mb-6">You can buy me a tea for the creation if you feel the tool is useful.</p>
+                
+                <!-- QR Code Placeholder -->
+                <div class="mb-6 flex justify-center">
+                    <img src="QR.png" alt="QR Code for Contribution" class="w-48 h-48 object-contain border-4 border-gray-100 dark:border-gray-600 rounded-2xl shadow-lg" onerror="this.src='https://placehold.co/200x200?text=QR+Code'">
+                </div>
+                
+                <button id="close-contribution-modal-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300">
+                    Close
+                </button>
+            </div>
+        </div>
+        
+        <!-- Mode Selection Section -->
+        <div id="mode-selection-section" class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl text-center fade-in">
+             <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">Choose Practice Mode</h2>
+             <div class="flex flex-col gap-4">
+                 <button id="mode-study-material-btn" class="group w-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-800/40 font-semibold py-5 px-6 rounded-2xl transition duration-300 flex items-center justify-center gap-4 shadow-sm border border-indigo-200 dark:border-indigo-800 hover:shadow-md">
+                     <div class="p-2 bg-indigo-200 dark:bg-indigo-800 rounded-full group-hover:scale-110 transition-transform">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                         </svg>
+                     </div>
+                     <div class="text-left">
+                         <span class="block text-lg font-bold">Upload Study Material</span>
+                         <span class="text-sm font-normal opacity-80">Quiz from your notes/books</span>
+                     </div>
+                 </button>
+                 <button id="mode-pyq-btn" class="group w-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-800/40 font-semibold py-5 px-6 rounded-2xl transition duration-300 flex items-center justify-center gap-4 shadow-sm border border-emerald-200 dark:border-emerald-800 hover:shadow-md">
+                     <div class="p-2 bg-emerald-200 dark:bg-emerald-800 rounded-full group-hover:scale-110 transition-transform">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                         </svg>
+                     </div>
+                     <div class="text-left">
+                         <span class="block text-lg font-bold">Use Previous Papers</span>
+                         <span class="text-sm font-normal opacity-80">Practice existing PYQ PDFs</span>
+                         <span class="block text-[11px] mt-1.5 font-medium text-red-500 dark:text-red-400 opacity-90">In the beta version, bugs or glitches may exist; report the bugs using Contact Us.</span>
+                     </div>
+                 </button>
+             </div>
+        </div>
+
+        <!-- Student Info Section -->
+        <div id="student-info-section" class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl text-center fade-in">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Student Details</h2>
+            <p class="text-gray-600 dark:text-gray-300 mb-6">Enter details to personalize your result summary (Optional).</p>
+            <div class="space-y-4">
+                <input type="text" id="student-name" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="Enter your name">
+                <input type="text" id="student-semester" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700/50 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="Enter your semester">
+            </div>
+            <div class="flex gap-4 mt-8">
+                <button id="skip-info-btn" class="w-full bg-gray-500 dark:bg-gray-600 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-gray-600 dark:hover:bg-gray-500 transition duration-300">
+                    Skip
+                </button>
+                <button id="continue-to-upload-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:bg-indigo-700 transition duration-300">
+                    Continue
+                </button>
+            </div>
+        </div>
+        
+        <!-- NEW: PYQ Selection Section -->
+        <div id="pyq-selection-section" class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl text-center fade-in">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">PYQ Configuration</h2>
+            <p class="text-gray-600 dark:text-gray-300 mb-6 bg-gray-100 dark:bg-gray-700/50 py-2 rounded-lg inline-block px-4">Questions Found: <span id="pyq-total-found" class="font-bold text-indigo-600 dark:text-indigo-400">0</span></p>
+            
+            <div class="space-y-4 mb-6 max-w-sm mx-auto">
+                <button id="pyq-first-10" class="w-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-semibold py-3 px-4 rounded-xl hover:bg-indigo-200 dark:hover:bg-indigo-800/60 transition shadow-sm border border-indigo-200 dark:border-indigo-800">First 10 Questions</button>
+                <button id="pyq-last-10" class="w-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-semibold py-3 px-4 rounded-xl hover:bg-emerald-200 dark:hover:bg-emerald-800/60 transition shadow-sm border border-emerald-200 dark:border-emerald-800">Last 10 Questions</button>
+                 <!-- NEW: All Questions Button -->
+                <button id="pyq-all-questions" class="w-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 font-semibold py-3 px-4 rounded-xl hover:bg-purple-200 dark:hover:bg-purple-800/60 transition shadow-sm border border-purple-200 dark:border-purple-800">All Questions</button>
+                
+                <div class="p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-700/30">
+                    <p class="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-200">Custom Range</p>
+                    <div class="flex items-center justify-center gap-3">
+                        <input type="number" id="pyq-custom-start" placeholder="Start" class="w-24 px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-600 dark:text-white dark:border-gray-500 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <span class="dark:text-gray-300 font-medium">to</span>
+                        <input type="number" id="pyq-custom-end" placeholder="End" class="w-24 px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-600 dark:text-white dark:border-gray-500 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <button id="pyq-custom-btn" class="mt-4 w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 text-sm shadow-md transition">Start Custom Range</button>
+                </div>
+            </div>
+            <button id="back-to-upload-pyq" class="text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 underline transition">Back to Upload</button>
+        </div>
+
+
+        <!-- Upload Section -->
+        <div id="upload-section" class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl text-center fade-in">
+            <p id="upload-instruction-text" class="text-lg text-gray-600 dark:text-gray-300 mb-8 font-medium">Upload your study materials (PDFs, images) to start the quiz.</p>
+            <div class="mb-6">
+                <input type="file" id="file-input" multiple class="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp">
+                <label for="file-input" class="file-input-label inline-block bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-bold py-4 px-8 rounded-2xl shadow-lg hover:shadow-indigo-500/30 hover:-translate-y-1 transition duration-300">
+                    <span class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        Choose Files
+                    </span>
+                </label>
+            </div>
+            <div id="file-list" class="text-gray-500 dark:text-gray-400 text-sm text-left space-y-2 mb-4"></div>
+             <!-- Max Questions Input (Only visible in normal mode) -->
+            <div id="quiz-settings" class="hidden mt-6 text-center bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl inline-block border border-gray-200 dark:border-gray-700">
+                 <label for="max-questions-input" class="text-sm font-bold text-gray-700 dark:text-gray-300 mr-2">Number of Questions:</label>
+                 <input type="number" id="max-questions-input" class="max-questions-input border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value="10" min="1" max="100">
+            </div>
+            <div id="preload-status" class="text-indigo-600 dark:text-indigo-400 font-medium text-sm mt-4 h-6"></div>
+            <button id="start-quiz-btn" class="mt-6 w-full bg-emerald-500 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:bg-emerald-600 transition duration-300 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed disabled:shadow-none transform active:scale-95" disabled>
+                Process Files & Start Quiz
+            </button>
+            <!-- Back to Menu button -->
+            <button id="back-to-menu-btn" class="mt-6 text-sm text-gray-500 hover:text-gray-800 dark:hover:text-gray-300 underline transition">Back to Menu</button>
+        </div>
+
+        <!-- Quiz Section -->
+        <div id="quiz-section" class="fade-in">
+            <div class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl">
+                <div id="quiz-student-info" class="hidden pb-4 mb-4 border-b border-gray-200 dark:border-gray-700 text-sm text-gray-500"></div>
+                <div class="flex justify-between items-end mb-6 border-b border-gray-100 dark:border-gray-700 pb-4">
+                     <!-- Question Count and Difficulty -->
+                    <div>
+                         <h2 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">Question <span id="question-count">1</span> <span class="text-gray-400 dark:text-gray-500 text-lg font-medium">/ <span id="max-questions-display">10</span></span></h2>
+                         <div id="question-difficulty" class="mt-2"></div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Time</div>
+                        <div class="text-2xl font-mono font-bold text-gray-800 dark:text-white"><span id="timer-display">0</span>s</div>
+                        <div class="text-sm text-gray-400 mt-1">Score: <span id="score-display" class="font-bold text-indigo-500">0</span></div>
+                    </div>
+                </div>
+                <div id="question-container" class="mb-8 min-h-[100px]">
+                    <div id="question-text" class="text-xl leading-relaxed text-gray-800 dark:text-gray-100 question-content font-medium"></div>
+                </div>
+                <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                <div id="feedback-container" class="mt-6 text-center font-bold text-lg min-h-[30px]"></div>
+                <div id="explanation-container" class="hidden mt-6 p-6 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 rounded-2xl text-gray-700 dark:text-gray-300 shadow-inner"></div>
+                <div class="flex gap-4 mt-6">
+                    <button id="explain-answer-btn" class="hidden flex-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold py-3 px-4 rounded-xl hover:bg-blue-200 dark:hover:bg-blue-800/50 transition duration-300">
+                        ✨ Explain Answer
+                    </button>
+                    <button id="next-question-btn" class="hidden flex-1 bg-indigo-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 transform hover:-translate-y-0.5">
+                        Next Question
+                    </button>
+                </div>
+            </div>
+            <button id="end-quiz-btn" class="mt-8 w-full bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 font-bold py-4 px-6 rounded-2xl hover:bg-red-200 dark:hover:bg-red-900/40 transition duration-300">
+                End Quiz
+            </button>
+        </div>
+
+        <!-- Result Section -->
+        <div id="result-section" class="fade-in">
+             <div class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl text-center">
+                <div id="student-summary-info" class="hidden text-left dark:text-gray-300 bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl mb-6"></div>
+                <h1 class="text-4xl font-bold text-gray-800 dark:text-white mb-2 tracking-tight">Quiz Complete!</h1>
+                <p class="text-gray-600 dark:text-gray-300 mb-8">Great effort! Here is how you performed:</p>
+                
+                <div id="motivation-container" class="mb-8">
+                    <div id="lottie-animation" class="w-40 h-40 mx-auto"></div>
+                    <p id="motivation-text" class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mt-4"></p>
+                </div>
+
+                <div class="bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl p-8 mb-10 shadow-lg transform hover:scale-[1.02] transition duration-300">
+                    <p class="text-lg font-medium opacity-90">Total Score</p>
+                    <div class="flex items-baseline justify-center gap-2 mt-2">
+                        <span class="text-6xl font-extrabold" id="final-score">0 / 0</span>
+                    </div>
+                    <p class="text-3xl font-bold mt-2 bg-white/20 inline-block px-4 py-1 rounded-full backdrop-blur-sm" id="final-percentage">0%</p>
+                </div>
+
+                <div id="key-concepts-section" class="text-left mb-10">
+                    <button id="generate-summary-btn" class="w-full bg-emerald-500 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:bg-emerald-600 transition duration-300 flex items-center justify-center gap-2 group">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        Generate Key Concepts
+                    </button>
+                    <div id="key-concepts-container" class="hidden mt-6 p-6 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-2xl text-gray-700 dark:text-gray-300 shadow-inner"></div>
+                </div>
+
+                <div id="summary-section" class="text-left">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
+                        Detailed Review
+                    </h2>
+                    <div id="summary-container" class="space-y-4 pr-2 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 bg-gray-50 dark:bg-gray-900/30"></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-10">
+                    <button id="export-pdf-btn" class="w-full bg-gray-800 dark:bg-gray-700 text-white font-bold py-4 px-6 rounded-2xl shadow-md hover:bg-gray-900 dark:hover:bg-gray-600 transition duration-300 flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Export as PDF
+                    </button>
+                    <button id="restart-btn" class="w-full bg-indigo-600 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:bg-indigo-700 transition duration-300 flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Start New Quiz
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes Modal (Under Construction) -->
+        <div id="notes-modal" class="hidden fixed inset-0 flex items-center justify-center modal-backdrop" style="z-index: 60;">
+            <div class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl w-full max-w-sm m-4 modal-content-anim text-center relative">
+                 <button id="close-notes-btn" class="absolute top-4 right-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white font-bold text-xl">&times;</button>
+                <div class="mb-4 text-amber-500">
+                    <!-- Construction Icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">Under Construction</h2>
+                <p class="text-gray-600 dark:text-gray-300 mb-6">This feature is under construction. Please wait for the NEXT RELEASE.</p>
+                
+                <button id="close-notes-modal-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300">
+                    Okay, got it!
+                </button>
+            </div>
+        </div>
+
+        <!-- Loader -->
+        <div id="loader" class="hidden fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity">
+            <div class="glass-card bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl text-center w-full max-w-sm m-4 border border-white/20">
+                <div id="loader-spinner" class="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600 mx-auto"></div>
+                <p id="loader-main-text" class="mt-6 text-xl font-bold text-gray-800 dark:text-white">Your AI is thinking...</p>
+                <p id="loader-sub-text" class="text-sm text-gray-500 dark:text-gray-400 mt-2">Generating a unique question from your documents.</p>
+            </div>
+        </div>
+    </div>
+<script>
+    // State variables
+    let studentName = "";
+    let studentSemester = "";
+    let globalFilesData = [];
+    let filesContent = [];
+    let currentQuestionData = { question: "", options: [], correctAnswerIndex: -1, difficulty: "" };
+    let score = 0;
+    let totalQuestions = 0;
+    let maxQuestions = 10;
+    let attempts = 0;
+    let questionHistory = [];
+    let loaderTimer5s = null;
+    let loaderTimer10s = null;
+    let currentLottie;
+    let questionTimerInterval = null;
+    let questionStartTime = 0;
+    let questionBuffer = [];
+    let isFetching = false;
+    const MAX_BUFFER_SIZE = 3;
+    const globalTimeout = 90000;
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    
+    let isPyqMode = false;
+    // NEW: PYQ State
+    let pyqTotalQuestionsEstimate = 0;
+    let pyqTargetRange = { start: 1, end: 10 };
+
+    const congratulatoryMessages = [
+        "Brilliant! You're on fire!", "Wow, you're a genius! Nailed it!", "Stunning! You've got this down.",
+        "Correct! Are you sure you didn't write the textbook?", "Perfect! That's exactly right.",
+        "You're on a roll! Keep it up!", "Excellent work! You're a star!"
+    ];
+
+    const encouragementMessages = [
+        "Not quite, but don't give up! The next one is yours.", "Close! Every attempt is a step forward.",
+        "That was a tricky one. You'll get it next time!", "Don't worry, learning is a journey. Keep pushing!",
+        "Mistakes are proof that you are trying. Let's go again!"
+    ];
+
+    // Globals for Elements
+    let darkModeToggle, sunIcon, moonIcon, htmlElement;
+    let studentInfoSection, modeSelectionSection, uploadSection, quizSection, resultSection, pyqSelectionSection, appHeader;
+    let studentNameInput, studentSemesterInput, continueToUploadBtn, skipInfoBtn;
+    let modeStudyMaterialBtn, modePyqBtn, uploadInstructionText, headerBackBtn;
+    let fileInput, fileList, quizSettingsDiv, maxQuestionsInput, preloadStatus, startQuizBtn, backToMenuBtn;
+    let pyqTotalFound, pyqFirst10Btn, pyqLast10Btn, pyqAllQuestionsBtn, pyqCustomStart, pyqCustomEnd, pyqCustomBtn, backToUploadPyq;
+    let endQuizBtn, restartBtn, exportPdfBtn, explainAnswerBtn, nextQuestionBtn, generateSummaryBtn;
+    let openContributionBtn, contributionModal, closeContributionBtn, closeContributionModalBtn;
+    let notesBtn, notesModal, closeNotesBtn, closeNotesModalBtn;
+    let syllabusBtn, syllabusModal, closeSyllabusBtn;
+    let pyqBtn, pyqModal, closePyqBtn;
+    let showAddLinkFormBtn, addLinkForm, newLinkTitleInput, newLinkUrlInput, saveNewLinkBtn, cancelAddLinkBtn, pyqLinksContainer;
+    let apiKeyModal, apiKeyInput, saveApiKeyBtn;
+    let howToApiBtn, howToApiModal, closeHowToBtn, closeHowToModalBtn, changeApiKeyBtn;
+    let pharmaUpdatesBtn, pharmaUpdatesModal, closePharmaUpdatesBtn;
+    let downloadAppBtn, downloadAppModal, closeDownloadAppBtn;
+    let openContactBtn, contactModal, closeContactBtn; // New Contact variables
+    let loader, loaderSpinner, loaderMainText, loaderSubText;
+    let quizStudentInfo, questionCountDisplay, maxQuestionsDisplay, questionDifficultyDisplay, scoreDisplay, timerDisplay, questionText, optionsContainer, feedbackContainer, explanationContainer;
+    let studentSummaryInfo, motivationContainer, lottieAnimation, motivationText, finalScoreDisplay, finalPercentageDisplay, summaryContainer, keyConceptsContainer;
+
+    // --- INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeElements();
+        setupEventListeners();
+        initApiKey();
+        
+        // Initialize Theme logic after elements are grabbed
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            htmlElement.classList.add('dark');
+            if(sunIcon) sunIcon.classList.remove('hidden');
+            if(moonIcon) moonIcon.classList.add('hidden');
+        } else {
+            htmlElement.classList.remove('dark');
+            if(sunIcon) sunIcon.classList.add('hidden');
+            if(moonIcon) moonIcon.classList.remove('hidden');
+        }
+    });
+
+    function initializeElements() {
+        darkModeToggle = document.getElementById('dark-mode-toggle');
+        sunIcon = document.getElementById('sun-icon');
+        moonIcon = document.getElementById('moon-icon');
+        htmlElement = document.documentElement;
+
+        studentInfoSection = document.getElementById('student-info-section');
+        modeSelectionSection = document.getElementById('mode-selection-section'); 
+        uploadSection = document.getElementById('upload-section');
+        quizSection = document.getElementById('quiz-section');
+        resultSection = document.getElementById('result-section');
+        pyqSelectionSection = document.getElementById('pyq-selection-section'); 
+        appHeader = document.getElementById('app-header');
+
+        studentNameInput = document.getElementById('student-name');
+        studentSemesterInput = document.getElementById('student-semester');
+        continueToUploadBtn = document.getElementById('continue-to-upload-btn');
+        skipInfoBtn = document.getElementById('skip-info-btn');
+        
+        modeStudyMaterialBtn = document.getElementById('mode-study-material-btn');
+        modePyqBtn = document.getElementById('mode-pyq-btn');
+        uploadInstructionText = document.getElementById('upload-instruction-text');
+        headerBackBtn = document.getElementById('header-back-btn'); 
+
+        fileInput = document.getElementById('file-input');
+        fileList = document.getElementById('file-list');
+        quizSettingsDiv = document.getElementById('quiz-settings'); 
+        maxQuestionsInput = document.getElementById('max-questions-input'); 
+        preloadStatus = document.getElementById('preload-status');
+        startQuizBtn = document.getElementById('start-quiz-btn');
+        backToMenuBtn = document.getElementById('back-to-menu-btn'); 
+
+        pyqTotalFound = document.getElementById('pyq-total-found');
+        pyqFirst10Btn = document.getElementById('pyq-first-10');
+        pyqLast10Btn = document.getElementById('pyq-last-10');
+        pyqAllQuestionsBtn = document.getElementById('pyq-all-questions'); 
+        pyqCustomStart = document.getElementById('pyq-custom-start');
+        pyqCustomEnd = document.getElementById('pyq-custom-end');
+        pyqCustomBtn = document.getElementById('pyq-custom-btn');
+        backToUploadPyq = document.getElementById('back-to-upload-pyq');
+
+        endQuizBtn = document.getElementById('end-quiz-btn');
+        restartBtn = document.getElementById('restart-btn');
+        exportPdfBtn = document.getElementById('export-pdf-btn');
+        explainAnswerBtn = document.getElementById('explain-answer-btn');
+        nextQuestionBtn = document.getElementById('next-question-btn');
+        generateSummaryBtn = document.getElementById('generate-summary-btn');
+        
+        openContributionBtn = document.getElementById('open-contribution-btn');
+        contributionModal = document.getElementById('contribution-modal');
+        closeContributionBtn = document.getElementById('close-contribution-btn');
+        closeContributionModalBtn = document.getElementById('close-contribution-modal-btn');
+        
+        notesBtn = document.getElementById('notes-btn');
+        notesModal = document.getElementById('notes-modal');
+        closeNotesBtn = document.getElementById('close-notes-btn');
+        closeNotesModalBtn = document.getElementById('close-notes-modal-btn');
+        
+        syllabusBtn = document.getElementById('syllabus-btn');
+        syllabusModal = document.getElementById('syllabus-modal');
+        closeSyllabusBtn = document.getElementById('close-syllabus-btn');
+
+        pyqBtn = document.getElementById('pyq-btn');
+        pyqModal = document.getElementById('pyq-modal');
+        closePyqBtn = document.getElementById('close-pyq-btn');
+        
+        showAddLinkFormBtn = document.getElementById('show-add-link-form-btn');
+        addLinkForm = document.getElementById('add-link-form');
+        newLinkTitleInput = document.getElementById('new-link-title');
+        newLinkUrlInput = document.getElementById('new-link-url');
+        saveNewLinkBtn = document.getElementById('save-new-link-btn');
+        cancelAddLinkBtn = document.getElementById('cancel-add-link-btn');
+        pyqLinksContainer = document.getElementById('pyq-links-container');
+
+        apiKeyModal = document.getElementById('api-key-modal');
+        apiKeyInput = document.getElementById('api-key-input');
+        saveApiKeyBtn = document.getElementById('save-api-key-btn');
+        
+        howToApiBtn = document.getElementById('how-to-api-btn');
+        howToApiModal = document.getElementById('how-to-api-modal');
+        closeHowToBtn = document.getElementById('close-how-to-btn');
+        closeHowToModalBtn = document.getElementById('close-how-to-modal-btn');
+        changeApiKeyBtn = document.getElementById('change-api-key-btn'); 
+        
+        pharmaUpdatesBtn = document.getElementById('pharma-updates-btn');
+        pharmaUpdatesModal = document.getElementById('pharma-updates-modal');
+        closePharmaUpdatesBtn = document.getElementById('close-pharma-updates-btn');
+
+        downloadAppBtn = document.getElementById('download-app-btn');
+        downloadAppModal = document.getElementById('download-app-modal');
+        closeDownloadAppBtn = document.getElementById('close-download-app-btn');
+
+        // Contact Us Elements
+        openContactBtn = document.getElementById('open-contact-btn');
+        contactModal = document.getElementById('contact-modal');
+        closeContactBtn = document.getElementById('close-contact-btn');
+
+        loader = document.getElementById('loader');
+        loaderSpinner = document.getElementById('loader-spinner');
+        loaderMainText = document.getElementById('loader-main-text');
+        loaderSubText = document.getElementById('loader-sub-text');
+
+        quizStudentInfo = document.getElementById('quiz-student-info');
+        questionCountDisplay = document.getElementById('question-count');
+        maxQuestionsDisplay = document.getElementById('max-questions-display');
+        questionDifficultyDisplay = document.getElementById('question-difficulty');
+        scoreDisplay = document.getElementById('score-display');
+        timerDisplay = document.getElementById('timer-display');
+        questionText = document.getElementById('question-text');
+        optionsContainer = document.getElementById('options-container');
+        feedbackContainer = document.getElementById('feedback-container');
+        explanationContainer = document.getElementById('explanation-container');
+
+        studentSummaryInfo = document.getElementById('student-summary-info');
+        motivationContainer = document.getElementById('motivation-container');
+        lottieAnimation = document.getElementById('lottie-animation');
+        motivationText = document.getElementById('motivation-text');
+        finalScoreDisplay = document.getElementById('final-score');
+        finalPercentageDisplay = document.getElementById('final-percentage');
+        summaryContainer = document.getElementById('summary-container');
+        keyConceptsContainer = document.getElementById('key-concepts-container');
+        
+        const { jsPDF } = window.jspdf;
+        if (typeof pdfjsLib === 'undefined') {
+            console.error("pdf.js library is not loaded!");
+        } else {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    }
+
+    function setupEventListeners() {
+        if(darkModeToggle) {
+            darkModeToggle.addEventListener('click', () => {
+                if (htmlElement.classList.contains('dark')) {
+                    htmlElement.classList.remove('dark');
+                    localStorage.theme = 'light';
+                    if(sunIcon) sunIcon.classList.add('hidden');
+                    if(moonIcon) moonIcon.classList.remove('hidden');
+                } else {
+                    htmlElement.classList.add('dark');
+                    localStorage.theme = 'dark';
+                    if(sunIcon) sunIcon.classList.remove('hidden');
+                    if(moonIcon) moonIcon.classList.add('hidden');
+                }
+            });
+        }
+
+        if(saveApiKeyBtn) {
+            saveApiKeyBtn.addEventListener('click', () => {
+                const apiKey = apiKeyInput.value.trim();
+                if (apiKey) {
+                    sessionStorage.setItem('gemini-api-key', apiKey);
+                    showSection('student-info-section');
+                } else {
+                    alert('Please enter a valid API key.');
+                }
+            });
+        }
+        
+        if (changeApiKeyBtn) {
+            changeApiKeyBtn.addEventListener('click', () => {
+                sessionStorage.removeItem('gemini-api-key');
+                apiKeyInput.value = '';
+                showSection(null);
+                if(apiKeyModal) apiKeyModal.classList.remove('hidden');
+            });
+        }
+        
+        if(howToApiBtn) howToApiBtn.addEventListener('click', () => { if(howToApiModal) { howToApiModal.classList.remove('hidden'); howToApiModal.style.display = 'flex'; } });
+        if(closeHowToBtn) closeHowToBtn.addEventListener('click', () => { if(howToApiModal) { howToApiModal.classList.add('hidden'); howToApiModal.style.display = 'none'; } });
+        if(closeHowToModalBtn) closeHowToModalBtn.addEventListener('click', () => { if(howToApiModal) { howToApiModal.classList.add('hidden'); howToApiModal.style.display = 'none'; } });
+        
+        if(notesBtn) notesBtn.addEventListener('click', () => { if(notesModal) notesModal.style.display = 'flex'; });
+        if(closeNotesBtn) closeNotesBtn.addEventListener('click', () => { if(notesModal) notesModal.style.display = 'none'; });
+        if(closeNotesModalBtn) closeNotesModalBtn.addEventListener('click', () => { if(notesModal) notesModal.style.display = 'none'; });
+        
+        if(pharmaUpdatesBtn) pharmaUpdatesBtn.addEventListener('click', () => { if(pharmaUpdatesModal) { pharmaUpdatesModal.classList.remove('hidden'); pharmaUpdatesModal.style.display = 'flex'; } });
+        if(closePharmaUpdatesBtn) closePharmaUpdatesBtn.addEventListener('click', () => { if(pharmaUpdatesModal) { pharmaUpdatesModal.classList.add('hidden'); pharmaUpdatesModal.style.display = 'none'; } });
+
+        if(downloadAppBtn) downloadAppBtn.addEventListener('click', () => { if(downloadAppModal) { downloadAppModal.classList.remove('hidden'); downloadAppModal.style.display = 'flex'; } });
+        if(closeDownloadAppBtn) closeDownloadAppBtn.addEventListener('click', () => { if(downloadAppModal) { downloadAppModal.classList.add('hidden'); downloadAppModal.style.display = 'none'; } });
+
+        if(syllabusBtn) syllabusBtn.addEventListener('click', () => { if(syllabusModal) syllabusModal.style.display = 'flex'; });
+        if(closeSyllabusBtn) closeSyllabusBtn.addEventListener('click', () => { if(syllabusModal) syllabusModal.style.display = 'none'; });
+
+        if(pyqBtn) pyqBtn.addEventListener('click', () => { if(pyqModal) pyqModal.style.display = 'flex'; });
+        if(closePyqBtn) closePyqBtn.addEventListener('click', () => { if(pyqModal) pyqModal.style.display = 'none'; if(addLinkForm) addLinkForm.classList.add('hidden'); });
+        
+        if(showAddLinkFormBtn) showAddLinkFormBtn.addEventListener('click', () => { if(addLinkForm) addLinkForm.classList.remove('hidden'); if(showAddLinkFormBtn) showAddLinkFormBtn.classList.add('hidden'); });
+        if(cancelAddLinkBtn) cancelAddLinkBtn.addEventListener('click', () => { if(addLinkForm) addLinkForm.classList.add('hidden'); if(showAddLinkFormBtn) showAddLinkFormBtn.classList.remove('hidden'); if(newLinkTitleInput) newLinkTitleInput.value = ''; if(newLinkUrlInput) newLinkUrlInput.value = ''; });
+
+        if(saveNewLinkBtn) saveNewLinkBtn.addEventListener('click', () => {
+            const title = newLinkTitleInput.value.trim();
+            const url = newLinkUrlInput.value.trim();
+            if (title && url) {
+                const newLink = document.createElement('a');
+                newLink.href = url;
+                newLink.target = "_blank";
+                newLink.className = "block w-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-semibold py-3 px-4 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-800/40 transition text-left flex justify-between items-center border border-blue-100 dark:border-blue-800";
+                newLink.innerHTML = `<span>${title}</span><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>`;
+                if(pyqLinksContainer) pyqLinksContainer.appendChild(newLink);
+                if(addLinkForm) addLinkForm.classList.add('hidden');
+                if(showAddLinkFormBtn) showAddLinkFormBtn.classList.remove('hidden');
+                if(newLinkTitleInput) newLinkTitleInput.value = '';
+                if(newLinkUrlInput) newLinkUrlInput.value = '';
+            } else {
+                alert("Please enter both a title and a URL.");
+            }
+        });
+
+        if(openContributionBtn) openContributionBtn.addEventListener('click', () => { if(contributionModal) contributionModal.style.display = 'flex'; });
+        if(closeContributionBtn) closeContributionBtn.addEventListener('click', () => { if(contributionModal) contributionModal.style.display = 'none'; });
+        if(closeContributionModalBtn) closeContributionModalBtn.addEventListener('click', () => { if(contributionModal) contributionModal.style.display = 'none'; });
+
+        // Contact Us Event Listeners
+        if(openContactBtn) openContactBtn.addEventListener('click', () => { if(contactModal) { contactModal.classList.remove('hidden'); contactModal.style.display = 'flex'; } });
+        if(closeContactBtn) closeContactBtn.addEventListener('click', () => { if(contactModal) { contactModal.classList.add('hidden'); contactModal.style.display = 'none'; } });
+
+        if(continueToUploadBtn) continueToUploadBtn.addEventListener('click', () => {
+            studentName = studentNameInput ? studentNameInput.value.trim() : "";
+            studentSemester = studentSemesterInput ? studentSemesterInput.value.trim() : "";
+            showSection('mode-selection-section'); 
+        });
+
+        if(skipInfoBtn) skipInfoBtn.addEventListener('click', () => {
+            studentName = "";
+            studentSemester = "";
+            if(studentNameInput) studentNameInput.value = "";
+            if(studentSemesterInput) studentSemesterInput.value = "";
+            showSection('mode-selection-section'); 
+        });
+
+        if(modeStudyMaterialBtn) modeStudyMaterialBtn.addEventListener('click', () => {
+            isPyqMode = false;
+            if(uploadInstructionText) uploadInstructionText.textContent = "Upload your study materials (PDFs, images) to start the quiz.";
+            if(quizSettingsDiv) quizSettingsDiv.classList.remove('hidden'); 
+            showSection('upload-section');
+        });
+
+        if(modePyqBtn) modePyqBtn.addEventListener('click', () => {
+            isPyqMode = true;
+            if(uploadInstructionText) uploadInstructionText.textContent = "Upload a Previous Year Question (PYQ) paper PDF to practice.";
+            if(quizSettingsDiv) quizSettingsDiv.classList.add('hidden'); 
+            showSection('upload-section');
+        });
+
+        const backButtonHandler = () => {
+             if (quizSection.style.display === 'block' || resultSection.style.display === 'block') {
+                 if (!confirm("Are you sure you want to quit the quiz? Your progress will be lost.")) {
+                     return;
+                 }
+             }
+             showSection('mode-selection-section');
+             if(fileInput) fileInput.value = '';
+             if(fileList) fileList.innerHTML = '';
+             if(preloadStatus) preloadStatus.innerHTML = '';
+             if(quizSettingsDiv) quizSettingsDiv.classList.add('hidden');
+             if(startQuizBtn) startQuizBtn.disabled = true;
+             if(questionTimerInterval) clearInterval(questionTimerInterval);
+             if(currentLottie) currentLottie.destroy();
+        };
+
+        if (headerBackBtn) headerBackBtn.addEventListener('click', backButtonHandler);
+        if (backToMenuBtn) backToMenuBtn.addEventListener('click', backButtonHandler);
+
+        if(backToUploadPyq) backToUploadPyq.addEventListener('click', () => { showSection('upload-section'); });
+
+        if(pyqFirst10Btn) pyqFirst10Btn.addEventListener('click', () => startPyqQuiz(1, 10));
+        if(pyqLast10Btn) pyqLast10Btn.addEventListener('click', () => { const start = Math.max(1, pyqTotalQuestionsEstimate - 9); startPyqQuiz(start, pyqTotalQuestionsEstimate); });
+        if(pyqAllQuestionsBtn) pyqAllQuestionsBtn.addEventListener('click', () => { startPyqQuiz(1, pyqTotalQuestionsEstimate); });
+
+        if(pyqCustomBtn) pyqCustomBtn.addEventListener('click', () => {
+            const start = parseInt(pyqCustomStart.value);
+            const end = parseInt(pyqCustomEnd.value);
+            if (start && end && start <= end && start > 0) {
+                startPyqQuiz(start, end);
+            } else {
+                alert("Please enter a valid range.");
+            }
+        });
+
+        if(fileInput) fileInput.addEventListener('change', async () => {
+            if (fileInput.files.length === 0) {
+                if(fileList) fileList.innerHTML = '';
+                if(preloadStatus) preloadStatus.innerHTML = '';
+                if(!isPyqMode && quizSettingsDiv) quizSettingsDiv.classList.add('hidden');
+                if(startQuizBtn) startQuizBtn.disabled = true;
+                return;
+            }
+            if(preloadStatus) preloadStatus.textContent = 'Processing files...';
+            if(startQuizBtn) startQuizBtn.disabled = true;
+            if(!isPyqMode && quizSettingsDiv) quizSettingsDiv.classList.add('hidden');
+            if(fileList) fileList.innerHTML = '';
+            globalFilesData = [];
+            const files = Array.from(fileInput.files);
+            let filesProcessed = 0;
+            files.forEach((file, index) => {
+                const fileData = { file, numPages: null, startPage: 1, endPage: null, data: null, mimeType: file.type, status: 'processing' };
+                globalFilesData.push(fileData);
+                const reader = new FileReader();
+                if (file.type === 'application/pdf') {
+                    reader.onload = async (e) => {
+                        try {
+                            const arrayBuffer = e.target.result;
+                            globalFilesData[index].data = arrayBuffer;
+                            const bufferCopy = arrayBuffer.slice(0);
+                            const pdfDoc = await pdfjsLib.getDocument({ data: bufferCopy }).promise;
+                            globalFilesData[index].numPages = pdfDoc.numPages;
+                            globalFilesData[index].endPage = pdfDoc.numPages;
+                            globalFilesData[index].status = 'processed';
+                        } catch (err) {
+                            console.error("Error processing PDF:", err);
+                            globalFilesData[index].status = 'error';
+                        }
+                        filesProcessed++;
+                        renderFileList();
+                        checkAllFilesProcessed(files.length, filesProcessed);
+                    };
+                    reader.readAsArrayBuffer(file);
+                } else if (file.type.startsWith('image/')) {
+                    reader.onload = (e) => {
+                        globalFilesData[index].data = e.target.result;
+                        globalFilesData[index].status = 'processed';
+                        filesProcessed++;
+                        renderFileList();
+                        checkAllFilesProcessed(files.length, filesProcessed);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    console.warn(`Unsupported file type: ${file.name}`);
+                    globalFilesData[index].status = 'error';
+                    filesProcessed++;
+                    renderFileList();
+                    checkAllFilesProcessed(files.length, filesProcessed);
+                }
+            });
+        });
+
+        if(startQuizBtn) startQuizBtn.addEventListener('click', async () => {
+            showLoader(true, "Processing files...");
+            let totalPages = 0;
+            try {
+                totalPages = await processFilesForGemini();
+            } catch (error) {
+                showLoader(false);
+                if(preloadStatus) preloadStatus.textContent = error.message;
+                return;
+            }
+            if (filesContent.length === 0) {
+                showLoader(false);
+                if(preloadStatus) preloadStatus.textContent = "No valid files or pages were processed.";
+                return;
+            }
+            if (isPyqMode) {
+                showLoader(true, "Scanning for questions...");
+                try {
+                    const countPrompt = "Count the total number of multiple-choice questions in this document. Return ONLY the number (integer).";
+                    const countResult = await callGemini(countPrompt, "Count questions", true, false, false);
+                    const count = parseInt(countResult.match(/\d+/)?.[0] || "0");
+                    pyqTotalQuestionsEstimate = count || 50; 
+                    if(pyqTotalFound) pyqTotalFound.textContent = pyqTotalQuestionsEstimate;
+                    showLoader(false);
+                    showSection('pyq-selection-section'); 
+                } catch (e) {
+                    console.error("Error counting questions:", e);
+                    pyqTotalQuestionsEstimate = 50;
+                    if(pyqTotalFound) pyqTotalFound.textContent = "Unknown (Est. 50)";
+                    showLoader(false);
+                    showSection('pyq-selection-section');
+                }
+            } else {
+                const inputMax = parseInt(maxQuestionsInput.value);
+                if(!isNaN(inputMax) && inputMax > 0) {
+                    maxQuestions = inputMax;
+                } else {
+                     alert("Please enter a valid number of questions.");
+                     showLoader(false);
+                     return;
+                }
+                if(maxQuestionsDisplay) maxQuestionsDisplay.textContent = maxQuestions;
+                showSection('quiz-section');
+                if (studentName || studentSemester) {
+                    let infoHtml = '';
+                    if (studentName) infoHtml += `<p class="text-sm text-gray-600 dark:text-gray-300"><strong>Name:</strong> ${studentName}</p>`;
+                    if (studentSemester) infoHtml += `<p class="text-sm text-gray-600 dark:text-gray-300"><strong>Semester:</strong> ${studentSemester}</p>`;
+                    if(quizStudentInfo) { quizStudentInfo.innerHTML = infoHtml; quizStudentInfo.classList.remove('hidden'); }
+                } else {
+                    if(quizStudentInfo) quizStudentInfo.classList.add('hidden');
+                }
+                resetQuiz();
+                showLoader(true, "Generating first question...");
+                try {
+                    const firstQuestion = await fetchQuestionData();
+                    if (firstQuestion) {
+                        displayQuestion(firstQuestion);
+                        fillQuestionBuffer();
+                    } else {
+                        handleFetchError(new Error("Failed to load the first question."));
+                    }
+                } catch (error) {
+                    handleFetchError(error);
+                } finally {
+                    showLoader(false);
+                }
+            }
+        });
+
+        if(endQuizBtn) endQuizBtn.addEventListener('click', () => showResults());
+
+        if(nextQuestionBtn) nextQuestionBtn.addEventListener('click', async () => {
+            if (totalQuestions >= maxQuestions) {
+                showResults();
+                return;
+            }
+            if(nextQuestionBtn) nextQuestionBtn.classList.add('hidden');
+            if(explainAnswerBtn) explainAnswerBtn.classList.add('hidden');
+            if(explanationContainer) { explanationContainer.classList.add('hidden'); explanationContainer.innerHTML = ''; }
+            if (questionBuffer.length > 0) {
+                const nextQuestion = questionBuffer.shift();
+                displayQuestion(nextQuestion);
+                fillQuestionBuffer();
+            } else {
+                showLoader(true, "Fetching next question...");
+                try {
+                    const nextQuestion = await fetchQuestionData();
+                    if (nextQuestion) {
+                        displayQuestion(nextQuestion);
+                    } else {
+                        handleFetchError(new Error("Failed to load the next question."));
+                    }
+                    fillQuestionBuffer();
+                } catch (error) {
+                     console.error("Failed to display question:", error);
+                     handleFetchError(error);
+                } finally {
+                    showLoader(false);
+                }
+            }
+        });
+
+        if(restartBtn) restartBtn.addEventListener('click', () => {
+            if(currentLottie) currentLottie.destroy();
+            showSection('student-info-section');
+            if(fileInput) fileInput.value = '';
+            if(fileList) fileList.innerHTML = '';
+            if(preloadStatus) preloadStatus.innerHTML = '';
+            if(quizSettingsDiv) quizSettingsDiv.classList.add('hidden'); 
+            if(startQuizBtn) startQuizBtn.disabled = true;
+            if(studentNameInput) studentNameInput.value = "";
+            if(studentSemesterInput) studentSemesterInput.value = "";
+            if(maxQuestionsInput) maxQuestionsInput.value = 10; 
+        });
+
+        if(exportPdfBtn) exportPdfBtn.addEventListener('click', () => {
+            const defaultName = `ai-quiz-summary${studentName ? '-' + studentName.replace(/\s/g, '_') : ''}`;
+            const fileName = window.prompt("Enter a file name for your PDF:", defaultName);
+            if (fileName === null) return;
+            showLoader(true, "Preparing PDF... This may take a few seconds.", false);
+            setTimeout(() => {
+                const summary = document.getElementById('summary-container');
+                const keyConcepts = document.getElementById('key-concepts-container');
+                if(summary) { summary.style.maxHeight = 'none'; summary.style.overflowY = 'visible'; }
+                const resultsToCapture = document.getElementById('result-section');
+                html2canvas(resultsToCapture, { scale: 2, useCORS: true, onclone: (doc) => {
+                    const clonedKeyConcepts = doc.getElementById('key-concepts-container');
+                    if (clonedKeyConcepts && clonedKeyConcepts.classList.contains('hidden')) clonedKeyConcepts.style.display = 'none';
+                    const clonedStudentInfo = doc.getElementById('student-summary-info');
+                    if (clonedStudentInfo && clonedStudentInfo.classList.contains('hidden')) clonedStudentInfo.style.display = 'none';
+                    const allText = doc.querySelectorAll('.dark\\:text-white, .dark\\:text-gray-300');
+                    allText.forEach(el => {
+                         el.classList.remove('dark:text-white', 'dark:text-gray-300');
+                         el.style.color = 'black'; 
+                    });
+                }}).then(canvas => {
+                    if(summary) { summary.style.maxHeight = '24rem'; summary.style.overflowY = 'auto'; }
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = pdf.internal.pageSize.getHeight();
+                    const canvasAspectRatio = canvas.height / canvas.width;
+                    const margin = 10;
+                    const effectivePageWidth = pdfWidth - (margin * 2);
+                    const effectivePageHeight = pdfHeight - (margin * 2);
+                    const effectiveImgHeight = effectivePageWidth * canvasAspectRatio;
+                    let heightLeft = effectiveImgHeight;
+                    let position = 0;
+                    pdf.addImage(imgData, 'PNG', margin, margin, effectivePageWidth, effectiveImgHeight);
+                    heightLeft -= effectivePageHeight;
+                    while (heightLeft > 0) {
+                        position -= effectivePageHeight;
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', margin, position + margin, effectivePageWidth, effectiveImgHeight);
+                        heightLeft -= effectivePageHeight;
+                    }
+                    const finalFileName = fileName.trim() === "" ? defaultName : fileName.trim();
+                    pdf.save(finalFileName + '.pdf');
+                    showLoader(false);
+                }).catch(err => {
+                    console.error("Error generating PDF:", err);
+                    if(summary) { summary.style.maxHeight = '24rem'; summary.style.overflowY = 'auto'; }
+                    showLoader(false);
+                    alert("Sorry, there was an error creating the PDF.");
+                });
+            }, 1500);
+        });
+
+        if(explainAnswerBtn) explainAnswerBtn.addEventListener('click', async () => {
+            if(explanationContainer) { explanationContainer.innerHTML = '<div class="mini-spinner"></div>'; explanationContainer.classList.remove('hidden'); }
+            if(explainAnswerBtn) explainAnswerBtn.disabled = true;
+            const systemPrompt = `You are an expert tutor. Based on the provided documents, explain why the correct answer is right and why the other options are wrong for the given question. Consider the question type (Single Best, Match, Statement Analysis, Exception).
+RULES:
+1. Markdown formatting.
+2. Standard LaTeX ($...$) for math/science.
+3. CRITICAL: Combine symbols/units in ONE LaTeX block (\`10 $\\mu$m\`). NO SPACES.
+4. VITAL: No extra text/newlines around symbols.
+5. CRITICAL RULE: If unsure of LaTeX, use plain text. DO NOT guess.
+6. **TAMIL LANGUAGE RULE (CRITICAL):** If the explanation contains Tamil text, DO NOT wrap it in LaTeX.
+7. Explain 'All/None of the above' if applicable.`;
+            const labeledOptions = currentQuestionData.options.map((opt, i) => `${['a)', 'b)', 'c)', 'd)'][i]} ${opt}`);
+            const userPrompt = `Explain the answer: Question: ${currentQuestionData.question}\nOptions: ${JSON.stringify(labeledOptions)}\nCorrect Answer: ${currentQuestionData.options[currentQuestionData.correctAnswerIndex]}`;
+            try {
+                let explanation = await callGemini(systemPrompt, userPrompt, true, false, false);
+                explanation = explanation.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/\n/g, '<br>');
+                if(explanationContainer) {
+                    explanationContainer.innerHTML = explanation;
+                    if (window.MathJax) { window.MathJax.typesetPromise([explanationContainer]).catch((err) => console.log('MathJax error:', err)); }
+                }
+            } catch (error) { if(explanationContainer) explanationContainer.innerHTML = `<p class="text-red-500">Sorry, I couldn't generate an explanation. ${error.message}</p>`; }
+            finally { if(explainAnswerBtn) explainAnswerBtn.disabled = false; }
+        });
+
+        if(generateSummaryBtn) generateSummaryBtn.addEventListener('click', async () => {
+            if(keyConceptsContainer) { keyConceptsContainer.innerHTML = '<div class="mini-spinner"></div>'; keyConceptsContainer.classList.remove('hidden'); }
+            if(generateSummaryBtn) { generateSummaryBtn.disabled = true; generateSummaryBtn.textContent = 'Generating...'; }
+            const systemPrompt = `You are a helpful study assistant. Analyze the provided documents and extract a concise, bulleted list of the most important key concepts, definitions, and topics.
+RULES:
+1. Markdown formatting.
+2. Standard LaTeX ($...$) for math/science.
+3. CRITICAL: Combine symbols/units in ONE LaTeX block (\`10 $\\mu$m\`). NO SPACES.
+4. VITAL: No extra text/newlines around symbols.
+5. CRITICAL RULE: If unsure of LaTeX, use plain text. DO NOT guess.`;
+            const userPrompt = "Generate the key concepts summary from these documents.";
+            try {
+                let concepts = await callGemini(systemPrompt, userPrompt, true, false, false);
+                concepts = concepts.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\* (.*?)(?=\n\* |\n\n|$)/g, '<li class="ml-4 list-disc">$1</li>').replace(/\n/g, '<br>').replace(/<br><li/g, '<li');
+                if(keyConceptsContainer) {
+                    keyConceptsContainer.innerHTML = `<h3 class="font-bold text-lg mb-2">Key Concepts</h3><ul>${concepts}</ul>`;
+                    if (window.MathJax) { window.MathJax.typesetPromise([keyConceptsContainer]).catch((err) => console.log('MathJax error:', err)); }
+                }
+            } catch (error) { if(keyConceptsContainer) keyConceptsContainer.innerHTML = `<p class="text-red-500">Sorry, I couldn't generate the summary. ${error.message}</p>`; }
+        });
+    }
+
+    function showSection(sectionIdToShow) {
+        const sections = [studentInfoSection, modeSelectionSection, uploadSection, pyqSelectionSection, quizSection, resultSection];
+        sections.forEach(section => {
+            if (section) {
+                section.style.display = (section.id === sectionIdToShow) ? 'block' : 'none';
+            }
+        });
+        if(apiKeyModal) apiKeyModal.classList.add('hidden');
+        if(contributionModal) contributionModal.style.display = 'none';
+        if(notesModal) notesModal.style.display = 'none';
+        if(syllabusModal) syllabusModal.style.display = 'none';
+        if(pyqModal) pyqModal.style.display = 'none';
+        if(howToApiModal) howToApiModal.classList.add('hidden');
+        if(pharmaUpdatesModal) pharmaUpdatesModal.classList.add('hidden');
+        if(downloadAppModal) downloadAppModal.classList.add('hidden');
+        if(contactModal) { contactModal.classList.add('hidden'); contactModal.style.display = 'none'; }
+        
+        if (sectionIdToShow === 'student-info-section' || sectionIdToShow === 'mode-selection-section') {
+            if(headerBackBtn) headerBackBtn.classList.add('hidden');
+        } else {
+            if(headerBackBtn) headerBackBtn.classList.remove('hidden');
+        }
+    }
+
+    function initApiKey() {
+        if (!sessionStorage.getItem('gemini-api-key')) {
+             showSection(null);
+             if(apiKeyModal) apiKeyModal.classList.remove('hidden');
+        } else {
+            showSection('student-info-section');
+        }
+    }
+
+    function checkAllFilesProcessed(totalFiles, filesProcessed) {
+        if (totalFiles === filesProcessed) {
+            preloadStatus.textContent = 'Files are ready to be processed.';
+            if(!isPyqMode) quizSettingsDiv.classList.remove('hidden'); 
+            startQuizBtn.disabled = false;
+        }
+    }
+
+    function renderFileList() {
+        fileList.innerHTML = '';
+        globalFilesData.forEach((fileData, index) => {
+            const fileItemDiv = document.createElement('div');
+            fileItemDiv.classList.add('p-2', 'border', 'rounded-md', 'bg-gray-50', 'dark:bg-gray-700', 'dark:border-gray-600');
+            let content = '';
+            if (fileData.status === 'processing') {
+                content = `<span>Processing: ${fileData.file.name}...</span>`;
+            } else if (fileData.status === 'error') {
+                content = `<span class="text-red-500">Error processing: ${fileData.file.name}</span>`;
+            } else if (fileData.mimeType === 'application/pdf') {
+                content = `
+                    <div class="font-medium dark:text-white">${fileData.file.name} (${fileData.numPages} pages)</div>
+                `;
+            } else if (fileData.mimeType.startsWith('image/')) {
+                content = `<span class="font-medium dark:text-white">Image: ${fileData.file.name}</span>`;
+            }
+            fileItemDiv.innerHTML = content;
+            fileList.appendChild(fileItemDiv);
+        });
+    }
+
+    async function processFilesForGemini() {
+        filesContent = [];
+        let totalPages = 0;
+        for (const fileData of globalFilesData) {
+            if (fileData.status !== 'processed') continue;
+            if (fileData.mimeType.startsWith('image/')) {
+                const base64String = fileData.data.split(',')[1];
+                filesContent.push({ inlineData: { data: base64String, mimeType: fileData.mimeType } });
+            } else if (fileData.mimeType === 'application/pdf') {
+                let extractedText = `--- START OF PDF: ${fileData.file.name} ---\n\n`;
+                try {
+                    const bufferCopy = fileData.data.slice(0);
+                    const pdfDoc = await pdfjsLib.getDocument({ data: bufferCopy }).promise;
+                    for (let i = 1; i <= pdfDoc.numPages; i++) {
+                        const page = await pdfDoc.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        extractedText += `[Page ${i}]\n${pageText}\n\n`;
+                    }
+                    totalPages += pdfDoc.numPages;
+                    extractedText += `--- END OF PDF: ${fileData.file.name} ---\n`;
+                    filesContent.push({ text: extractedText });
+                } catch (err) {
+                    console.error(`Failed to extract text from ${fileData.file.name}:`, err);
+                    throw new Error(`Failed to extract text from PDF. ${err.message}`);
+                }
+            }
+        }
+        return totalPages;
+    }
+
+    function startPyqQuiz(start, end) {
+        pyqTargetRange.start = start;
+        pyqTargetRange.end = end;
+        maxQuestions = (end - start) + 1; 
+        if(maxQuestionsDisplay) maxQuestionsDisplay.textContent = maxQuestions;
+
+        showSection('quiz-section');
+         if (studentName || studentSemester) {
+            let infoHtml = '';
+            if (studentName) infoHtml += `<p class="text-sm text-gray-600 dark:text-gray-300"><strong>Name:</strong> ${studentName}</p>`;
+            if (studentSemester) infoHtml += `<p class="text-sm text-gray-600 dark:text-gray-300"><strong>Semester:</strong> ${studentSemester}</p>`;
+            quizStudentInfo.innerHTML = infoHtml;
+            quizStudentInfo.classList.remove('hidden');
+        } else {
+            quizStudentInfo.classList.add('hidden');
+        }
+
+        resetQuiz();
+        showLoader(true, `Generating question ${start}...`);
+        
+        fetchQuestionData()
+            .then(data => {
+                if(data) {
+                    displayQuestion(data);
+                    fillQuestionBuffer();
+                } else {
+                    handleFetchError(new Error("Failed to load first question"));
+                }
+            })
+            .catch(handleFetchError)
+            .finally(() => showLoader(false));
+    }
+
+    function resetQuiz() {
+        score = 0;
+        totalQuestions = 0;
+        if(scoreDisplay) scoreDisplay.textContent = score;
+        if(questionCountDisplay) questionCountDisplay.textContent = totalQuestions + 1;
+        if(maxQuestionsDisplay) maxQuestionsDisplay.textContent = maxQuestions; 
+        if(summaryContainer) summaryContainer.innerHTML = '';
+        if(keyConceptsContainer) { keyConceptsContainer.innerHTML = ''; keyConceptsContainer.classList.add('hidden'); }
+        if(generateSummaryBtn) { generateSummaryBtn.disabled = false; generateSummaryBtn.textContent = '✨ Generate Key Concepts'; }
+        if(currentLottie) currentLottie.destroy();
+        if(questionTimerInterval) clearInterval(questionTimerInterval);
+        questionHistory = [];
+        questionBuffer = [];
+    }
+
+    function extractJson(str) {
+        const jsonMatch = str.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch && jsonMatch[1]) return jsonMatch[1];
+        const firstBrace = str.indexOf('{');
+        const lastBrace = str.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) return str.substring(firstBrace, lastBrace + 1);
+        console.warn("Could not find valid JSON markers in text.");
+        return null;
+    }
+
+    async function callGemini(systemPrompt, userPrompt, useFiles = true, jsonResponse = false, newSchema = false) {
+        const apiKey = sessionStorage.getItem('gemini-api-key');
+        if (!apiKey) throw new Error("API key not valid. Please refresh and enter your key.");
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        const payload = {
+            contents: [{ role: "user", parts: [{ text: userPrompt }, ...(useFiles ? filesContent : [])] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+        };
+        if (jsonResponse) {
+            if (newSchema) {
+                payload.generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            question: { type: "STRING" },
+                            correctAnswer: { type: "STRING" },
+                            wrongAnswers: { type: "ARRAY", items: { type: "STRING" }, minItems: 3, maxItems: 3 },
+                            difficulty: { type: "STRING", enum: ["Easy", "Medium", "Hard"] }
+                        },
+                        required: ["question", "correctAnswer", "wrongAnswers", "difficulty"]
+                    }
+                };
+            } else {
+                 payload.generationConfig = {
+                    responseMimeType: "application/json",
+                    responseSchema: { type: "OBJECT", properties: { question: { type: "STRING" }, options: { type: "ARRAY", items: { type: "STRING" }, minItems: 4, maxItems: 4 }, correctAnswerIndex: { type: "INTEGER", minimum: 0, maximum: 3 } }, required: ["question", "options", "correctAnswerIndex"] }
+                };
+            }
+        }
+        const maxRetries = 7;
+        let delay = 3000;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), globalTimeout);
+            let text = "";
+            let error;
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (!response.ok) {
+                    const errorBody = await response.json().catch(() => ({}));
+                    const errorMessage = errorBody?.error?.message || `API request failed with status ${response.status}`;
+                    if (response.status >= 500 && response.status <= 599) { error = new Error(errorMessage); } else { throw new Error(errorMessage); }
+                }
+                if (!error) {
+                    const result = await response.json();
+                    text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!text) throw new Error("No content received from API. The model may have refused to answer.");
+                    if (jsonResponse) {
+                        const jsonText = extractJson(text);
+                        if (!jsonText) { console.error("Failed to extract JSON from response:", text); throw new Error("AI returned a response, but it was not in the expected format."); }
+                        return jsonText;
+                    }
+                    return text;
+                }
+            } catch (err) { clearTimeout(timeoutId); error = err; }
+            if (attempt === maxRetries - 1) { if (error.name === 'AbortError') throw new Error("The AI request timed out. Please try again."); throw error; }
+            const isRetryable = (error.name === 'AbortError') || (error.message.includes("Failed to fetch")) || (error.message.includes("overloaded")) || (error.message.includes("500") || error.message.includes("503"));
+            if (isRetryable) { console.warn(`AI request attempt ${attempt + 1} failed (${error.message}). Retrying in ${delay / 1000}s...`); await sleep(delay); delay *= 2; } else { throw error; }
+        }
+    }
+
+    async function fillQuestionBuffer() {
+        if (isFetching) return;
+        isFetching = true;
+        try {
+            while (questionBuffer.length < MAX_BUFFER_SIZE && (totalQuestions + questionBuffer.length) < maxQuestions) {
+                console.log(`Buffer has ${questionBuffer.length}/${MAX_BUFFER_SIZE}. Fetching new question... (Quiz total: ${totalQuestions + questionBuffer.length}/${maxQuestions})`);
+                let questionData = null;
+                let validationAttempts = 0;
+                while (!questionData && validationAttempts < 3) {
+                    try {
+                        questionData = await fetchQuestionData();
+                    } catch (error) {
+                         if (error.message.includes("duplicate options")) { console.warn(`Attempt ${validationAttempts + 1}: Discarded duplicate question. Retrying fetch...`); validationAttempts++; await sleep(500); }
+                         else { throw error; }
+                    }
+                }
+                if (questionData) {
+                    if (!questionHistory.some(q => q.question === questionData.question) && !questionBuffer.some(q => q.question === questionData.question)) { questionBuffer.push(questionData); }
+                    else { console.warn("Duplicate question (vs history/buffer) detected and skipped."); }
+                } else if (validationAttempts >= 3) { console.error("CRITICAL: Failed to get a valid (non-duplicate) question after 3 attempts."); break; }
+            }
+        } catch (error) { console.error("Error filling question buffer:", error.message); }
+        finally { isFetching = false; }
+    }
+
+    async function fetchQuestionData() {
+        feedbackContainer.innerHTML = '';
+        let systemPrompt = "";
+        let userPrompt = "";
+        const answeredQuestions = questionHistory.map(q => q.question);
+        const bufferedQuestions = questionBuffer.map(q => q.question);
+        const allKnownQuestions = [...answeredQuestions, ...bufferedQuestions];
+
+        if (isPyqMode) {
+             let targetQuestionNum;
+             if (pyqTargetRange.start === 1 && pyqTargetRange.end === 10) {
+                 targetQuestionNum = totalQuestions + questionBuffer.length + 1; 
+             } else if (pyqTargetRange.end === pyqTotalQuestionsEstimate) {
+                 targetQuestionNum = pyqTargetRange.end - (totalQuestions + questionBuffer.length);
+             } else {
+                 targetQuestionNum = pyqTargetRange.start + (totalQuestions + questionBuffer.length);
+             }
+             systemPrompt = `You are an expert exam analyzer. Your task is to EXTRACT a specific existing multiple-choice question from the provided PYQ document.
+RULES FOR PYQ MODE:
+1.  **Extract:** Look for "Question ${targetQuestionNum}" or the question at approximately that position in the sequence.
+2.  **Find Answer:** Look for the correct answer in the document (ticks, answer key, etc.).
+3.  **Solve if Needed:** If NO answer key is found, YOU must solve it.
+4.  **Format:** Output JSON with 'difficulty' estimation.
+5.  **Multi-Language:** If the question has Tamil text, PRESERVE IT exactly using Unicode.
+6.  **Tamil Language Protection (CRITICAL):**
+    - NEVER wrap Tamil text in LaTeX ($...$).
+    - NEVER use backslashes (\\) inside Tamil words.
+    - Output Tamil exactly as plain text.
+    - If the OCR/Text extraction is glitchy (e.g., showing circles, squares, or 't.'), infer the correct Tamil word from context if possible, otherwise skip to the next legible question.
+
+GENERAL RULES:
+1.  Standard LaTeX ($...$) for math/science notation ONLY (e.g., $H_2O$, $\\mu g$).
+2.  NO SPACES between symbols/units in LaTeX (\`10 $\\mu$m\`).
+3.  Output ONLY raw JSON.`;
+            userPrompt = `Extract Question #${targetQuestionNum} from the document. If it doesn't exist, find the next available one. JSON format only.`;
+        } else {
+            systemPrompt = `You are an AI quiz master. Based on the provided document(s), generate a single, unique, multiple-choice question. Return the result in a strict JSON format including the difficulty level ("Easy", "Medium", or "Hard").
+TARGET DISTRIBUTION:
+* Question Types: ~70% Single Best Answer, ~12% Match the Following, ~10% Statement Analysis, ~8% Exception/Negative. Vary the type based on the content IF POSSIBLE.
+* Difficulty: ~40% Easy (direct recall), ~40% Medium (requires some inference or combining facts), ~20% Hard (complex analysis, subtle distinctions).
+QUESTION TYPES DETAILS:
+1.  **Single Best Answer (Default):** Standard multiple choice.
+2.  **Match the Following:** If content allows pairings, present columns (P,Q,R,S vs I,II,III,IV) in 'question'. Options are combinations (e.g., "P-III, Q-II, R-I, S-IV").
+3.  **Statement Analysis:** If content allows evaluating facts, present statements ([P],[Q],[R],[S] or [A],[B],[C],[D]) in 'question'. Options are combinations (e.g., "P and S Only", "A, B and C are correct").
+4.  **Exception/Negative:** Ask which item does *not* belong using "EXCEPT" or "NOT".
+GENERAL RULES:
+1.  CRITICAL: NEVER start the question with 'According to the provided text', 'Based on the provided data', etc.
+2.  Use standard LaTeX ($...$) for math/science notation ONLY for numbers and scientific symbols.
+3.  ABSOLUTELY CRITICAL: Combine symbols and units *inside* the SAME LaTeX block (e.g., \`10 $\\mu$m\`, \`($\\mu$g)\`). NO SPACES between symbol and unit within LaTeX.
+4.  VITAL: Do NOT add extra text or newlines around symbols. Use standard LaTeX only.
+5.  CRITICAL RULE: If unsure about LaTeX, use plain text. DO NOT guess.
+6.  **TAMIL LANGUAGE RULE (CRITICAL):**
+    - ABSOLUTELY FORBIDDEN to use LaTeX ($...$) for Tamil characters.
+    - Do not use English characters (like 't.') to represent Tamil sounds unless standard transliteration is requested (which it is not).
+    - Output Tamil content as clean Unicode strings.
+    - If the input text contains extraction artifacts (circles, broken fonts), correct them to valid Tamil words before generating the question.
+7.  Output ONLY the raw JSON object { "question": "...", "correctAnswer": "...", "wrongAnswers": ["...", "...", "..."], "difficulty": "..." }.
+8.  CARDINAL RULE: The 'correctAnswer' and all three 'wrongAnswers' MUST be 100% unique. CRITICAL FAILURE if duplicates exist.
+9.  RARELY and RANDOMLY (<15% chance), use 'All of the above' or 'None of the above' as a plausible option.`;
+            userPrompt = `Generate one new multiple-choice question from the content, aiming for the target difficulty and type distribution. Avoid questions similar to these: ${JSON.stringify(allKnownQuestions)}`;
+        }
+        let jsonText = "";
+        try {
+            jsonText = await callGemini(systemPrompt, userPrompt, true, true, true);
+            const data = JSON.parse(jsonText);
+            const allOptions = [data.correctAnswer, ...data.wrongAnswers];
+            const uniqueOptions = new Set(allOptions);
+            if (uniqueOptions.size < allOptions.length) { console.error("CRITICAL: AI generated duplicate options. Retrying fetch.", allOptions); throw new Error("AI generated duplicate options. Discarding question."); }
+            if (!["Easy", "Medium", "Hard"].includes(data.difficulty)) {
+                console.warn(`AI returned invalid difficulty '${data.difficulty}'. Defaulting to Medium.`);
+                data.difficulty = "Medium";
+            }
+            return data;
+        } catch (error) {
+            console.error("Failed to parse or validate JSON:", error, "Received text:", jsonText);
+            let errorMessage = error.message;
+            if (error.message.includes("duplicate options")) { errorMessage = "AI generated a bad question (duplicates). Automatically retrying..."; throw new Error(errorMessage); }
+            else if (!error.message.includes("Failed to read AI response")) { errorMessage = `Failed to read AI response: ${error.message}`; }
+            throw new Error(errorMessage);
+        }
+    }
+
+    function displayQuestion(questionData) {
+        if (!questionData || !questionData.correctAnswer || !questionData.wrongAnswers || !questionData.difficulty) {
+            handleFetchError(new Error("Received empty or invalid question data structure."));
+            return;
+        };
+        const correctText = questionData.correctAnswer;
+        let options = [questionData.correctAnswer, ...questionData.wrongAnswers];
+        options.sort(() => Math.random() - 0.5);
+        const newCorrectIndex = options.indexOf(correctText);
+        currentQuestionData = {
+            question: questionData.question,
+            options,
+            correctAnswerIndex: newCorrectIndex,
+            difficulty: questionData.difficulty 
+        };
+        questionHistory.push({
+            question: currentQuestionData.question,
+            options: currentQuestionData.options,
+            correctIdx: currentQuestionData.correctAnswerIndex,
+            selectedIdx: null,
+            timeTaken: 0,
+            difficulty: currentQuestionData.difficulty 
+        });
+        totalQuestions++;
+        if(questionCountDisplay) questionCountDisplay.textContent = totalQuestions;
+        if (maxQuestionsDisplay) maxQuestionsDisplay.textContent = maxQuestions;
+        const difficulty = currentQuestionData.difficulty;
+        let difficultyClass = '';
+        if (difficulty === 'Easy') difficultyClass = 'difficulty-easy';
+        else if (difficulty === 'Medium') difficultyClass = 'difficulty-medium';
+        else if (difficulty === 'Hard') difficultyClass = 'difficulty-hard';
+        if(questionDifficultyDisplay) questionDifficultyDisplay.innerHTML = `<span class="difficulty-label ${difficultyClass}">${difficulty}</span>`;
+        if(questionText) questionText.innerHTML = currentQuestionData.question.replace(/\n/g, '<br>');
+        if(optionsContainer) {
+            optionsContainer.innerHTML = '';
+            const optionLabels = ['a)', 'b)', 'c)', 'd)'];
+            currentQuestionData.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.textContent = `${optionLabels[index]} ${option}`;
+                button.classList.add('option-btn', 'w-full', 'text-left', 'p-4', 'border-2', 'rounded-lg', 'bg-white', 'hover:border-indigo-400', 'focus:outline-none', 'focus:ring-2', 'focus:ring-indigo-400', 'dark:bg-gray-700', 'dark:text-white', 'dark:border-gray-600', 'dark:hover:bg-gray-600'); 
+                button.dataset.index = index;
+                button.addEventListener('click', handleOptionSelect);
+                optionsContainer.appendChild(button);
+            });
+        }
+        if (window.MathJax) { window.MathJax.typesetPromise([questionText, optionsContainer]).catch((err) => console.log('MathJax error:', err)); }
+        if (totalQuestions + questionBuffer.length < maxQuestions) {
+            fillQuestionBuffer();
+        }
+        if (questionTimerInterval) clearInterval(questionTimerInterval);
+        if(timerDisplay) timerDisplay.textContent = '0';
+        questionStartTime = Date.now();
+        attempts = 0; 
+        questionTimerInterval = setInterval(() => { if(timerDisplay) timerDisplay.textContent = Math.floor((Date.now() - questionStartTime) / 1000); }, 1000);
+    }
+
+    function handleOptionSelect(event) {
+        if (questionTimerInterval) clearInterval(questionTimerInterval);
+        const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
+        const selectedButton = event.target;
+        const selectedIndex = parseInt(selectedButton.dataset.index);
+        if (!currentQuestionData || currentQuestionData.correctAnswerIndex === undefined || currentQuestionData.correctAnswerIndex < 0) {
+             console.error("CRITICAL: currentQuestionData is invalid!", currentQuestionData);
+             feedbackContainer.textContent = "An error occurred validating this question. Skipping.";
+             feedbackContainer.classList.add('text-red-500');
+             nextQuestionBtn.classList.remove('hidden');
+             return;
+        }
+        const correctIndex = currentQuestionData.correctAnswerIndex;
+        questionHistory[questionHistory.length - 1].selectedIdx = selectedIndex;
+        questionHistory[questionHistory.length - 1].timeTaken = timeTaken;
+        const optionButtons = optionsContainer.querySelectorAll('.option-btn');
+        optionButtons.forEach(btn => btn.disabled = true);
+        attempts++;
+        if (selectedIndex === correctIndex) {
+            selectedButton.classList.add('correct');
+            feedbackContainer.textContent = congratulatoryMessages[Math.floor(Math.random() * congratulatoryMessages.length)];
+            feedbackContainer.classList.remove('text-red-500');
+            feedbackContainer.classList.add('text-green-600');
+            if (attempts === 1) { score++; scoreDisplay.textContent = score; }
+        } else {
+            selectedButton.classList.add('incorrect');
+            if (correctIndex >= 0 && correctIndex < optionButtons.length) { optionButtons[correctIndex].classList.add('correct'); }
+            else { console.error("CRITICAL: Invalid correctIndex:", correctIndex); }
+            feedbackContainer.textContent = encouragementMessages[Math.floor(Math.random() * encouragementMessages.length)];
+            feedbackContainer.classList.remove('text-green-600');
+            feedbackContainer.classList.add('text-red-500');
+        }
+        if (totalQuestions < maxQuestions) {
+            nextQuestionBtn.classList.remove('hidden');
+        } else {
+            endQuizBtn.textContent = "View Results"; 
+            endQuizBtn.classList.remove('hidden');
+        }
+        explainAnswerBtn.classList.remove('hidden');
+    }
+
+    function handleFetchError(error) {
+        console.error("Error fetching question:", error);
+        let userMessage = `Sorry, I couldn't generate a question: ${error.message}`;
+        let showChangeKeyBtn = false; 
+        if (error.message.includes("No content")) {
+            userMessage = "The AI couldn't find a suitable question in your document. Please try a different file.";
+        } else if (error.message.includes("API key not valid") || error.message.includes("403")) { 
+            userMessage = "Your API Key is invalid or expired. Please update it.";
+            showChangeKeyBtn = true;
+        } else if (error.message.includes("timed out")) {
+             userMessage = "The AI request timed out. Please check your connection and try again.";
+        } else if (error.message.includes("Failed to fetch")) {
+             userMessage = "A network error occurred. Please check your connection.";
+        } else if (error.message.includes("detached ArrayBuffer")) {
+             userMessage = "A file processing error occurred. Please try re-uploading your files.";
+        } else if (error.message.includes("overloaded")) {
+             userMessage = "The AI is currently overloaded. The app tried to reconnect but failed. Please try again in a moment.";
+        } else if (error.message.includes("duplicate options")) {
+             userMessage = "The AI generated a bad question (duplicates). Automatically retrying...";
+        }
+        feedbackContainer.textContent = userMessage;
+        feedbackContainer.classList.add('text-red-500');
+        if (showChangeKeyBtn) {
+            const btn = document.createElement('button');
+            btn.textContent = "Change API Key";
+            btn.className = "mt-2 bg-red-100 text-red-700 font-semibold py-1 px-3 rounded hover:bg-red-200 transition text-sm";
+            btn.onclick = () => {
+                sessionStorage.removeItem('gemini-api-key');
+                apiKeyInput.value = '';
+                showSection(null);
+                apiKeyModal.classList.remove('hidden');
+            };
+            feedbackContainer.appendChild(document.createElement('br')); 
+            feedbackContainer.appendChild(btn);
+        }
+        endQuizBtn.textContent = "End Quiz"; 
+        endQuizBtn.classList.remove('hidden');
+        nextQuestionBtn.classList.add('hidden'); 
+    }
+
+    function showResults() {
+        if (questionTimerInterval) clearInterval(questionTimerInterval);
+        showSection('result-section');
+        if(studentSummaryInfo) studentSummaryInfo.innerHTML = '';
+        if (studentName || studentSemester) {
+            let infoHtml = '';
+            if (studentName) infoHtml += `<p class="text-lg text-gray-600 dark:text-gray-300"><strong>Name:</strong> ${studentName}</p>`;
+            if (studentSemester) infoHtml += `<p class="text-lg text-gray-600 dark:text-gray-300"><strong>Semester:</strong> ${studentSemester}</p>`;
+            infoHtml += '<hr class="my-4 dark:border-gray-700">';
+            if(studentSummaryInfo) { studentSummaryInfo.innerHTML = infoHtml; studentSummaryInfo.classList.remove('hidden'); }
+        } else { if(studentSummaryInfo) studentSummaryInfo.classList.add('hidden'); }
+
+        const questionsAttempted = totalQuestions > 0 ? totalQuestions : 0;
+        if(finalScoreDisplay) finalScoreDisplay.textContent = `${score} / ${questionsAttempted}`;
+        const percentage = questionsAttempted > 0 ? Math.round((score / questionsAttempted) * 100) : 0;
+        if(finalPercentageDisplay) finalPercentageDisplay.textContent = `${percentage}%`;
+
+        if(currentLottie) currentLottie.destroy();
+        let motivationMsg = "";
+        let lottieUrl = "";
+        if (percentage >= 80) { motivationMsg = "Your progress is outstanding! Truly brilliant work!"; lottieUrl = 'https://lottie.host/86d6f2c8-886f-4c5c-9c88-e8b83921762c/fVl2TE4EfA.json'; }
+        else if (percentage >= 50) { motivationMsg = "Great job! You're clearly improving and learning fast!"; lottieUrl = 'https://lottie.host/a61e053a-93f4-4a25-83f5-7d7166162130/b0YtL1kC3E.json'; }
+        else if (percentage >= 25) { motivationMsg = "Solid effort! Keep pushing, you'll master it next time!"; lottieUrl = 'https://lottie.host/5a07e1e6-052b-47e1-b485-618451120b60/eL1jQW8VqS.json'; }
+        else { motivationMsg = "Every quiz is a chance to learn. Keep at it!"; lottieUrl = 'https://lottie.host/249b9961-9f93-45f4-a039-9d9f1e102e3b/e8qgqS6gqC.json'; }
+        if(motivationText) motivationText.textContent = motivationMsg;
+        if(lottieAnimation) currentLottie = lottie.loadAnimation({ container: lottieAnimation, renderer: 'svg', loop: true, autoplay: true, path: lottieUrl });
+
+        if(summaryContainer) {
+            summaryContainer.innerHTML = '';
+            if (questionHistory.length === 0) { summaryContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">No questions were answered.</p>'; }
+            const optionLabels = ['a)', 'b)', 'c)', 'd)'];
+            questionHistory.forEach((item, index) => {
+                if (!item || item.options === undefined) { console.warn("Skipping invalid history item:", item); return; }
+                const summaryItem = document.createElement('div');
+                summaryItem.classList.add('p-4', 'rounded-lg', 'border', 'bg-gray-50', 'dark:bg-gray-700', 'dark:border-gray-600');
+                let optionsHtml = item.options.map((opt, i) => {
+                    let classes = 'block p-2 rounded-md mt-1';
+                    if (i === item.correctIdx) classes += ' bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 font-medium';
+                    if (i === item.selectedIdx && i !== item.correctIdx) classes += ' bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 line-through';
+                    else if (i === item.selectedIdx) classes += item.selectedIdx !== null ? ' font-medium' : '';
+                    return `<span class="${classes}">${optionLabels[i]} ${opt}</span>`;
+                }).join('');
+                const timeText = item.timeTaken !== undefined ? `${item.timeTaken} seconds` : 'N/A';
+                const difficulty = item.difficulty || 'N/A';
+                let difficultyClass = '';
+                if (difficulty === 'Easy') difficultyClass = 'difficulty-easy';
+                else if (difficulty === 'Medium') difficultyClass = 'difficulty-medium';
+                else if (difficulty === 'Hard') difficultyClass = 'difficulty-hard';
+                const difficultyHtml = `<span class="difficulty-label ${difficultyClass}">${difficulty}</span>`;
+                const questionHtml = item.question.replace(/\n/g, '<br>');
+                summaryItem.innerHTML = `
+                    <div class="flex justify-between items-start"> 
+                        <div>
+                             <p class="font-bold text-gray-800 dark:text-white mb-1">Question ${index + 1}:</p>
+                             ${difficultyHtml} 
+                        </div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Time Taken: ${timeText}</p>
+                    </div>
+                    <div class="font-semibold text-gray-700 dark:text-gray-200 my-2 question-content">${questionHtml}</div> 
+                    <div class="space-y-1 dark:text-gray-300">${optionsHtml}</div>
+                `;
+                summaryContainer.appendChild(summaryItem);
+            });
+            if (window.MathJax) { window.MathJax.typesetPromise([summaryContainer]).catch((err) => console.log('MathJax error:', err)); }
+        }
+    }
+
+    function showLoader(isLoading, mainText = "Your AI is thinking...", showSpinner = true) {
+        if(loaderTimer5s) clearTimeout(loaderTimer5s);
+        if(loaderTimer10s) clearTimeout(loaderTimer10s);
+        if(!loader) return;
+        if (isLoading) {
+            if(loaderMainText) loaderMainText.textContent = mainText;
+            if(loaderSubText) loaderSubText.textContent = "Please wait a moment...";
+            if(loaderSpinner) loaderSpinner.style.display = showSpinner ? 'block' : 'none';
+            if (showSpinner) {
+                 if(loaderSubText) loaderSubText.textContent = "Generating a unique question...";
+                 loaderTimer5s = setTimeout(() => { if(loaderMainText) loaderMainText.textContent = "Thinking deeply..."; if(loaderSubText) loaderSubText.textContent = "Analyzing details..."; }, 5000);
+                 loaderTimer10s = setTimeout(() => { if(loaderMainText) loaderMainText.textContent = "Almost there..."; if(loaderSubText) loaderSubText.textContent = "Crafting the perfect question..."; }, 10000);
+            }
+            loader.classList.remove('hidden');
+        } else {
+            loader.classList.add('hidden');
+        }
+    }
+</script>
